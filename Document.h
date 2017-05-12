@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_set>
 
 using namespace std;
 
@@ -16,10 +17,13 @@ public:
 
     Token(string s){
         surface = s;
+        capitalized = isupper(surface[0]);
     }
 
     string surface;
     string label;
+    bool capitalized;
+    unordered_set<int> features;
 };
 
 class Sentence {
@@ -33,6 +37,9 @@ public:
 class Document {
 public:
 
+    Document(string id){
+        this->id = id;
+    }
     string id;
     vector<Sentence> sentences;
 };
