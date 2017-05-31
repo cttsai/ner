@@ -1,13 +1,10 @@
 #ifndef _LIBLINEAR_H
 #define _LIBLINEAR_H
 
-#define LIBLINEAR_VERSION 211
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-extern int liblinear_version;
+#define POLY2
 
 struct feature_node
 {
@@ -20,7 +17,11 @@ struct problem
 	int l, n;
 	double *y;
 	struct feature_node **x;
-	double bias;            /* < 0 if no bias term */
+	double bias;            /* < 0 if no bias term */  
+#ifdef POLY2
+	double coef0;
+	double gamma;
+#endif
 };
 
 enum { L2R_LR, L2R_L2LOSS_SVC_DUAL, L2R_L2LOSS_SVC, L2R_L1LOSS_SVC_DUAL, MCSVM_CS, L1R_L2LOSS_SVC, L1R_LR, L2R_LR_DUAL, L2R_L2LOSS_SVR = 11, L2R_L2LOSS_SVR_DUAL, L2R_L1LOSS_SVR_DUAL }; /* solver_type */
@@ -37,6 +38,10 @@ struct parameter
 	double* weight;
 	double p;
 	double *init_sol;
+#ifdef POLY2
+	double coef0;
+	double gamma;
+#endif
 };
 
 struct model
