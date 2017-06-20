@@ -28,6 +28,13 @@ public:
         brown_cluster_features = new vector<string>;
     }
 
+    ~Token(){
+        delete brown_cluster_features;
+        delete gazetteer_features;
+        delete wikifier_features;
+        delete features;
+    }
+
     string get_gold_type(){
         if(label.empty() || label == "O")
             return label;
@@ -43,8 +50,12 @@ public:
     string surface;
     string label;
     string prediction;
+    int start_offset = -1;
+    int end_offset = -1;
     bool capitalized;
     unordered_map<int, double> *features;
+
+    unordered_map<string, double> *type2score;
 
     // feature cache
     vector<string> *brown_cluster_features;
@@ -57,6 +68,11 @@ public:
 
     Sentence(){
         tokens = new vector<Token *>;
+    }
+
+    ~Sentence(){
+        for(int i = 0; i < tokens->size(); i++)
+            delete tokens->at(i);
     }
 
     vector<Token *> *tokens;
@@ -79,6 +95,12 @@ public:
         this->id = id;
         token_label_cnt = new unordered_map<string,  unordered_map<string, int>*>();
     }
+
+    ~Document(){
+        delete token_label_cnt;
+        for(int i = 0; i < sentences->size(); i++)
+            delete sentences->at(i);
+    }
     string id;
     vector<Sentence *> *sentences;
     unordered_map<string, unordered_map<string, int>*> *token_label_cnt;
@@ -98,6 +120,7 @@ public:
     int sentence_size(int sen_id){
         return sentences->at(sen_id)->size();
     }
+
 };
 
 

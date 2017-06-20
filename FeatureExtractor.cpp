@@ -1,4 +1,4 @@
-//
+
 // Created by Chen-Tse Tsai on 5/11/17.
 //
 
@@ -10,38 +10,55 @@
 
 #include "FeatureExtractor.h"
 
+extern unordered_map<string, string> *label2id;
+
 void lowercase(string &word) ;
 
 void FeatureExtractor::extract(Document *doc, int sen_id, int tok_id) {
 
-    update_doc_stats(doc, sen_id, tok_id);
+    if(use_tagcontext)
+        update_doc_stats(doc, sen_id, tok_id);
 
-    sentence_start(doc, sen_id, tok_id);
+    if(use_sen)
+        sentence_start(doc, sen_id, tok_id);
 
-    capitalization(doc, sen_id, tok_id);
+    if(use_cap)
+        capitalization(doc, sen_id, tok_id);
 
-    forms(doc, sen_id, tok_id);
+    if(use_form)
+        forms(doc, sen_id, tok_id);
 
-    affixes(doc, sen_id, tok_id);
+    if(use_affixe)
+        affixes(doc, sen_id, tok_id);
 
-    word_type(doc, sen_id, tok_id);
+    if(use_wordtype)
+        word_type(doc, sen_id, tok_id);
 
-    previous_tag1(doc, sen_id, tok_id);
+    if(use_pretag1)
+        previous_tag1(doc, sen_id, tok_id);
 
-    previous_tag2(doc, sen_id, tok_id);
+    if(use_pretag2)
+        previous_tag2(doc, sen_id, tok_id);
 
-    previous_tag_pattern(doc, sen_id, tok_id);
+    if(use_tagpattern)
+        previous_tag_pattern(doc, sen_id, tok_id);
 
-    previous_tag_context(doc, sen_id, tok_id);
+    if(use_tagcontext)
+        previous_tag_context(doc, sen_id, tok_id);
 
-    brown_cluster(doc, sen_id, tok_id);
+    if(use_brown)
+        brown_cluster(doc, sen_id, tok_id);
 
-    gazetteer(doc, sen_id, tok_id);
+    if(use_gazetteer)
+        gazetteer(doc, sen_id, tok_id);
 
-    wikifier(doc, sen_id, tok_id);
-    hyphen(doc, sen_id, tok_id);
+    if(use_hyphen)
+        hyphen(doc, sen_id, tok_id);
 
-//    add_dummy_feature(doc, sen_id, tok_id);
+    if(use_wikifier)
+        wikifier(doc, sen_id, tok_id);
+
+    add_dummy_feature(doc, sen_id, tok_id);
 }
 
 void FeatureExtractor::add_dummy_feature(Document *doc, int sen_id, int tok_id){
@@ -78,6 +95,8 @@ void FeatureExtractor::update_doc_stats(Document *doc, int sen_id, int tok_id) {
 void FeatureExtractor::add_feature(Token *token, string feature, double value) {
 
     if(filter_features && good_features->find(feature) == good_features->end()) return;
+
+    if(gf_set >= 0 && good_features1->at(gf_set)->find(feature) == good_features1->at(gf_set)->end()) return;
 
     int fid = get_feature_id(feature);
     token->features->insert({fid, value});
@@ -117,29 +136,25 @@ void FeatureExtractor::capitalization(Document *doc, int sen_id, int tok_id) {
 
 void FeatureExtractor::forms(Document *doc, int sen_id, int tok_id) {
     Token *target = doc->get_token(sen_id, tok_id);
-    for(int j = -2; j <= 2; j++){
+    for(int j = -form_context_size; j <= form_context_size; j++){
         int i = tok_id + j;
         if(i >= 0 && i < doc->sentence_size(sen_id)){
             string word = doc->get_token(sen_id, i)->surface;
             string norm = normalize_digits(word);
-//            add_feature(target, "WordForm:"+to_string(j)+":"+word, 1);
-//            add_feature(target, "WordForm-norm:"+to_string(j)+":"+norm, 1);
             add_feature(target, to_string(j)+":"+word, 1);
             add_feature(target, to_string(j)+":"+norm, 1);
 
             // conjunction with previous tag
-            if(tok_id > 0) {
-                string plabel;
-                if(training)
-                    plabel = doc->get_token(sen_id, tok_id-1)->label;
-                else
-                    plabel = doc->get_token(sen_id, tok_id-1)->prediction;
-
-//                add_feature(target, "WordForm+PreTag:"+to_string(j)+":"+word+":"+plabel, 1);
-//                add_feature(target, "WordForm-norm+PreTag:"+to_string(j)+":"+norm+":"+plabel, 1);
-                add_feature(target, to_string(j)+":"+word+":"+plabel, 1);
-                add_feature(target, to_string(j)+":"+norm+":"+plabel, 1);
-            }
+//            if(tok_id > 0) {
+//                string plabel;
+//                if(training)
+//                    plabel = doc->get_token(sen_id, tok_id-1)->label;
+//                else
+//                    plabel = doc->get_token(sen_id, tok_id-1)->prediction;
+//
+//                add_feature(target, to_string(j)+":"+word+":"+plabel, 1);
+//                add_feature(target, to_string(j)+":"+norm+":"+plabel, 1);
+//            }
         }
     }
 }
@@ -365,9 +380,12 @@ void FeatureExtractor::init_brown_clusters() {
 //        cout << brown_cluster_paths.at(i) << endl;
 //        cout << "#words " << brown_clusters.back().size() << endl;
     }
+
+    brown_initialized = true;
 }
 
 void FeatureExtractor::gen_brown_cache(Document *doc){
+    if(use_brown && !brown_initialized) init_brown_clusters();
     if(!brown_clusters) return;
     for(int sen_id = 0; sen_id < doc->size(); sen_id++){
         for(int tok_id = 0; tok_id < doc->sentence_size(sen_id); tok_id++){
@@ -401,12 +419,23 @@ void FeatureExtractor::brown_cluster(Document *doc, int sen_id, int tok_id) {
 
     Token *target = doc->get_token(sen_id, tok_id);
 
-    for (int j = -2; j <= 2; j++) {
+    for (int j = -brown_context_size; j <= brown_context_size; j++) {
         int i = tok_id + j;
         if (i >= 0 && i < doc->sentence_size(sen_id)) {
             vector<string> *bf = doc->get_token(sen_id, i)->brown_cluster_features;
-            for(int p = 0; p < bf->size(); p++)
-                add_feature(target, "Brown:"+to_string(j)+":"+bf->at(p), 1);
+            for(int p = 0; p < bf->size(); p++) {
+                add_feature(target, "Brown:" + to_string(j) + ":" + bf->at(p), 1);
+
+//                if (tok_id > 0) {
+//                    string plabel;
+//                    if (training)
+//                        plabel = doc->get_token(sen_id, tok_id - 1)->label;
+//                    else
+//                        plabel = doc->get_token(sen_id, tok_id - 1)->prediction;
+//
+//                    add_feature(target, to_string(j) + ":" + to_string(j) + ":" + bf->at(p) + ":" + plabel, 1);
+//                }
+            }
         }
     }
 }
@@ -442,6 +471,8 @@ void FeatureExtractor::init_gazetteers() {
 
 //        cout << path << " " << gazetteers.back().size() << endl;
     }
+
+    gazetteer_initialized = true;
 }
 
 void FeatureExtractor::gazetteer(Document *doc, int sen_id, int tok_id) {
@@ -450,7 +481,7 @@ void FeatureExtractor::gazetteer(Document *doc, int sen_id, int tok_id) {
 
     Token *target = doc->get_token(sen_id, tok_id);
 
-    for (int j = -2; j <= 2; j++) {
+    for (int j = -gazetteer_context_size; j <= gazetteer_context_size; j++) {
         int i = tok_id + j;
         if (i >= 0 && i < doc->sentence_size(sen_id)) {
             vector<string> *gf = doc->get_token(sen_id, i)->gazetteer_features;
@@ -462,6 +493,8 @@ void FeatureExtractor::gazetteer(Document *doc, int sen_id, int tok_id) {
 }
 
 void FeatureExtractor::gen_gazetteer_cache(Document *doc) {
+
+    if(use_gazetteer && !gazetteer_initialized) init_gazetteers();
 
     if(!gazetteers) return;
 
@@ -541,6 +574,9 @@ void FeatureExtractor::wikifier(Document *doc, int sen_id, int tok_id){
 
 void FeatureExtractor::read_good_features(string file) {
 
+
+    filter_features = true;
+
     good_features = new unordered_set<string>;
     ifstream infile(file);
     string line, buf;
@@ -556,10 +592,34 @@ void FeatureExtractor::read_good_features(string file) {
     cout << "#good features " << good_features->size() << endl;
 }
 
+void FeatureExtractor::read_good_features1(string file) {
+
+    filter_features = false;
+    good_features1 = new vector<unordered_set<string> *>;
+
+    for(int j = 0; j < label2id->size(); j++) {
+        unordered_set<string> *fs = new unordered_set<string>;
+        ifstream infile(file+"_"+to_string(j));
+//        ifstream infile(file);
+        string line, buf;
+        while (getline(infile, line)) {
+            stringstream ss(line);
+            int i = 0;
+            while (ss >> buf) {
+                if (i == 1)
+                    fs->insert(buf);
+                i++;
+            }
+        }
+        good_features1->push_back(fs);
+        cout << "#good features " << good_features1->back()->size() << endl;
+    }
+}
+
 void FeatureExtractor::hyphen(Document *doc, int sen_id, int tok_id) {
     Token *target = doc->get_token(sen_id, tok_id);
 
-    for (int j = -2; j <= 2; j++) {
+    for (int j = -hyphen_context_size; j <= hyphen_context_size; j++) {
         int i = tok_id + j;
         if (i >= 0 && i < doc->sentence_size(sen_id)) {
             string &word = doc->get_token(sen_id, i)->surface;
@@ -574,4 +634,47 @@ void FeatureExtractor::hyphen(Document *doc, int sen_id, int tok_id) {
         }
     }
 
+}
+
+void FeatureExtractor::context_ner(Document *doc, int sen_id, int tok_id) {
+    Token *target = doc->get_token(sen_id, tok_id);
+
+    for (int j = -2; j <= 2; j++) {
+        int i = tok_id + j;
+        if (i >= 0 && i < doc->sentence_size(sen_id)) {
+            string ner_tag = doc->get_token(sen_id, i)->wikifier_features->at(0);
+            add_feature(target, "ContextNER:"+to_string(j)+":"+ner_tag, 1);
+
+        }
+    }
+}
+
+void FeatureExtractor::prev_context_ner(Document *doc, int sen_id, int tok_id) {
+
+    string prev_tag = "";
+    int dist = 0;
+
+    for(int i = tok_id - 1; i >=0; i--){
+        dist++;
+        string tag = doc->get_token(sen_id, i)->wikifier_features->at(0);
+        if(tag != "O") {
+            prev_tag = tag.substr(2, tag.size() - 2);
+            break;
+        }
+    }
+
+    if(prev_tag != ""){
+        for(int i = sen_id - 1; i >= 0 && prev_tag == ""; i--){
+            for(int j = doc->sentence_size(i); j >= 0; j--){
+                dist++;
+                string tag = doc->get_token(i, j)->wikifier_features->at(0);
+                if(tag != "O") {
+                    prev_tag = tag.substr(2, tag.size() - 2);
+                    break;
+                }
+            }
+        }
+    }
+
+    add_feature(doc->get_token(sen_id, tok_id), "PreviousNERTag:"+to_string(dist)+":"+prev_tag, 1);
 }

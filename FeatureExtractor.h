@@ -16,12 +16,8 @@ public:
     FeatureExtractor(){
         feature2id = new unordered_map<string ,int>();
         id2feature = new unordered_map<int, string>();
-        init_gazetteers();
-        init_brown_clusters();
-        if(filter_features)
-            read_good_features("good_features_0.25");
     }
-    bool filter_features = true;
+    bool filter_features = false;
 
     void extract(Document *doc, int sen_id, int tok_id);
 
@@ -32,11 +28,37 @@ public:
 
     void gen_brown_cache(Document *doc);
     void gen_gazetteer_cache(Document *doc);
+    void read_good_features(string file);
     unordered_map<int, string> *id2feature;
 
+    bool use_sen = true;
+    bool use_cap = true;
+    bool use_form = true;
+    bool use_wordtype = true;
+    bool use_affixe = true;
+    bool use_pretag1 = true;
+    bool use_pretag2 = true;
+    bool use_tagpattern = true;
+    bool use_tagcontext = true;
+    bool use_brown = true;
+    bool use_gazetteer = true;
+    bool use_hyphen = true;
+    bool use_wikifier = false;
+
+    bool brown_initialized = false;
+    bool gazetteer_initialized = false;
+
+    int form_context_size = 2;
+    int brown_context_size = 2;
+    int hyphen_context_size = 2;
+    int gazetteer_context_size = 2;
+
+    void read_good_features1(string file);
+
+    int gf_set = -1;
+    vector<unordered_set<string> *> *good_features1 = NULL;
 
 private:
-    void read_good_features(string file);
 
     unordered_set<string> *good_features;
 
@@ -45,7 +67,6 @@ private:
     void forms(Document *doc, int sen_id, int tok_id);
     void word_type(Document *doc, int sen_id, int tok_id);
     void affixes(Document *doc, int sen_id, int tok_id);
-    void context_affixes(Sentence *sentence, int idx);
     void previous_tag1(Document *doc, int sen_id, int tok_id);
     void previous_tag2(Document *doc, int sen_id, int tok_id);
     void previous_tag_pattern(Document *doc, int sen_id, int tok_id);
@@ -54,8 +75,13 @@ private:
     void gazetteer(Document *doc, int sen_id, int tok_id);
     void hyphen(Document *doc, int sen_id, int tok_id);
     void update_doc_stats(Document *doc, int sen_id, int tok_id);
-    void add_dummy_feature(Document *doc, int sen_id, int tok_id);
     void wikifier(Document *doc, int sen_id, int tok_id);
+
+    void context_affixes(Sentence *sentence, int idx);
+    void context_ner(Document *doc, int sen_id, int tok_id);
+    void prev_context_ner(Document *doc, int sen_id, int tok_id);
+    void next_context_ner(Document *doc, int sen_id, int tok_id);
+    void add_dummy_feature(Document *doc, int sen_id, int tok_id);
 
     void add_feature(Token *token, string feature, double value);
     int get_feature_id(string name);
@@ -74,13 +100,19 @@ private:
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt"
+//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/es/wiki-c1000-min3",
+//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/en/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
+//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/es/wiki-c500-min3"
+//            "/home/mayhew2/software/brown-cluster-master/tldump-c100-p1.out",
+//            "/home/mayhew2/software/brown-cluster-master/tldump-c500-p1.out",
+//            "/home/mayhew2/software/brown-cluster-master/tldump-c1000-p1.out"
     };
     const int min_word_freq = 3;
     const vector<int> prefix_len{4,6,10};
     void get_prefix(Token *token);
 
     // variables for gazetteers
-    const string gazetteer_list = "/shared/experiments/ctsai12/workspace/illinois-ner/config/gazetteers-list.txt";
+    const string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt";
     vector<unordered_set<string> *> *gazetteers;
     vector<unordered_set<string> *> *gazetteers_nocase;
     vector<string> *gazetteer_names;
