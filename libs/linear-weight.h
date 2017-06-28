@@ -9,6 +9,7 @@ extern "C" {
 
 #define WEIGHT
 
+
 extern int liblinear_version;
 
 struct feature_node

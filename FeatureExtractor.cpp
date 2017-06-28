@@ -58,7 +58,7 @@ void FeatureExtractor::extract(Document *doc, int sen_id, int tok_id) {
     if(use_wikifier)
         wikifier(doc, sen_id, tok_id);
 
-    add_dummy_feature(doc, sen_id, tok_id);
+//    add_dummy_feature(doc, sen_id, tok_id);
 }
 
 void FeatureExtractor::add_dummy_feature(Document *doc, int sen_id, int tok_id){
@@ -96,9 +96,10 @@ void FeatureExtractor::add_feature(Token *token, string feature, double value) {
 
     if(filter_features && good_features->find(feature) == good_features->end()) return;
 
-    if(gf_set >= 0 && good_features1->at(gf_set)->find(feature) == good_features1->at(gf_set)->end()) return;
+    if(gf_set >= 0 && good_features1 != NULL && good_features1->at(gf_set)->find(feature) == good_features1->at(gf_set)->end()) return;
 
     int fid = get_feature_id(feature);
+    max_idx = max(max_idx, fid);
     token->features->insert({fid, value});
 
 }
@@ -154,9 +155,14 @@ void FeatureExtractor::forms(Document *doc, int sen_id, int tok_id) {
 //
 //                add_feature(target, to_string(j)+":"+word+":"+plabel, 1);
 //                add_feature(target, to_string(j)+":"+norm+":"+plabel, 1);
+//
 //            }
         }
     }
+//    if(tok_id > 0) {
+//        string psurface = doc->get_token(sen_id, tok_id-1)->surface;
+//        add_feature(target, "Bigram:"+doc->get_token(sen_id, tok_id)->surface+":"+psurface,1);
+//    }
 }
 
 string FeatureExtractor::normalize_digits(string token) {
@@ -231,6 +237,8 @@ void FeatureExtractor::affixes(Document *doc, int sen_id, int tok_id) {
             add_feature(target, "Prefix:" + prefix, 1);
         }
     }
+//    add_feature(target, "Ignorefirst:" + surface.substr(1, n-1), 1);
+//    add_feature(target, "Ignorelast:" + surface.substr(0, n-1), 1);
 
     for(int j = 1; j < 5; j++){
         if(n >= j){
@@ -433,7 +441,7 @@ void FeatureExtractor::brown_cluster(Document *doc, int sen_id, int tok_id) {
 //                    else
 //                        plabel = doc->get_token(sen_id, tok_id - 1)->prediction;
 //
-//                    add_feature(target, to_string(j) + ":" + to_string(j) + ":" + bf->at(p) + ":" + plabel, 1);
+//                    add_feature(target, "BrownPreTag:"+to_string(j) + ":" + bf->at(p) + ":" + plabel, 1);
 //                }
             }
         }

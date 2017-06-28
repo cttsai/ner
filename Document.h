@@ -120,6 +120,17 @@ public:
     int sentence_size(int sen_id){
         return sentences->at(sen_id)->size();
     }
+    
+    void clear_features(){
+        delete token_label_cnt;
+        token_label_cnt = new unordered_map<string,  unordered_map<string, int>*>();
+        for(int i = 0; i < size(); i++){
+            Sentence *sen = sentences->at(i);
+            for(int j = 0; j < sen->size(); j++){
+                sen->get_token(j)->features->clear();
+            }
+        }
+    }
 
 };
 

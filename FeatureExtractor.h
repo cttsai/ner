@@ -30,6 +30,7 @@ public:
     void gen_gazetteer_cache(Document *doc);
     void read_good_features(string file);
     unordered_map<int, string> *id2feature;
+    int max_idx = 0;
 
     bool use_sen = true;
     bool use_cap = true;
@@ -57,6 +58,14 @@ public:
 
     int gf_set = -1;
     vector<unordered_set<string> *> *good_features1 = NULL;
+    string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt";
+    vector<string> brown_cluster_paths{
+            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
+            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",
+            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt"
+    };
+    int min_word_freq = 3;
+    vector<int> prefix_len{4,6,10};
 
 private:
 
@@ -96,23 +105,9 @@ private:
 
     // variables for brown clusters
     vector<unordered_map<string, string> *> *brown_clusters;
-    const vector<string> brown_cluster_paths{
-            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
-            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",
-            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt"
-//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/es/wiki-c1000-min3",
-//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/en/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
-//            "/shared/preprocessed/ctsai12/multilingual/xlwikifier-data/brown-clusters/es/wiki-c500-min3"
-//            "/home/mayhew2/software/brown-cluster-master/tldump-c100-p1.out",
-//            "/home/mayhew2/software/brown-cluster-master/tldump-c500-p1.out",
-//            "/home/mayhew2/software/brown-cluster-master/tldump-c1000-p1.out"
-    };
-    const int min_word_freq = 3;
-    const vector<int> prefix_len{4,6,10};
     void get_prefix(Token *token);
 
     // variables for gazetteers
-    const string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt";
     vector<unordered_set<string> *> *gazetteers;
     vector<unordered_set<string> *> *gazetteers_nocase;
     vector<string> *gazetteer_names;

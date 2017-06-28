@@ -1,0 +1,6 @@
+/shared/corpora/ner/gazetteers/am/per
+/shared/corpora/ner/gazetteers/am/org
+/shared/corpora/ner/gazetteers/am/loc
+/shared/corpora/ner/gazetteers/en/per
+/shared/corpora/ner/gazetteers/en/org
+/shared/corpora/ner/gazetteers/en/loc

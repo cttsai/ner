@@ -45,9 +45,9 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
             while (getline(ss, buf, '\t')) {
                 if (c == 0)
                     label = buf;
-                if (c == 1 && buf != "x")
+                if (c == 1 && isdigit(buf[0])) // the start offset of the token
                     start = stoi(buf);
-                if (c == 2 && buf != "x")
+                if (c == 2 && isdigit(buf[0]))
                     end = stoi(buf);
                 if (c == 5) {
                     stringstream sss(buf);
@@ -58,6 +58,8 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                     wiki_feats->push_back(buf);
                 c++;
             }
+            if(surface == "-DOCSTART-") continue;
+
             if(surface == "-LRB-")
                 surface = "(";
             else if(surface == "-RRB-")
@@ -69,6 +71,10 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                 token->start_offset = start;
                 token->end_offset = end;
             }
+        }
+        if (sentence->size() > 0) {
+            doc->sentences->push_back(sentence);
+            sentence = new Sentence;
         }
         docs->push_back(doc);
     }
@@ -88,7 +94,9 @@ void writeColumnFormatFiles(vector<Document *> *docs, string dir) {
             Sentence *sen = doc->get_sentence(j);
             for(int k = 0; k < sen->size(); k++){
                 Token *token = doc->get_token(j, k);
+                outfile << token->prediction +"\tx\tx\tx\tx\t"+token->surface+"\tx\tx\tx\tx" << endl;
             }
+            outfile << endl;
         }
 
         outfile.close();
@@ -244,8 +252,8 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
     cout << "Building training instances..." << endl;
 
     unordered_set<string> *good_features = NULL;
-    if(extractor->gf_set >= 0 && extractor->good_features1 != NULL)
-        good_features = extractor->good_features1->at(extractor->gf_set);
+//    if(extractor->gf_set >= 0 && extractor->good_features1 != NULL)
+//        good_features = extractor->good_features1->at(extractor->gf_set);
 
     struct problem *prob = new problem();
     struct feature_node *x_space;
@@ -256,18 +264,28 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
     // count number of instances and features
     for(int doc_id = 0; doc_id < docs->size(); doc_id++){
         Document *doc = docs->at(doc_id);
+        extractor->gen_brown_cache(doc);
+        extractor->gen_gazetteer_cache(doc);
+
         for(int sen_id = 0; sen_id < doc->size(); sen_id++){
             Sentence *sen = doc->get_sentence(sen_id);
             for(int tok_id = 0; tok_id < sen->size(); tok_id++){
-                prob->l++;
+                extractor->extract(doc, sen_id, tok_id);
                 Token *token = doc->get_token(sen_id, tok_id);
+                if(token->features->size() == 0) continue;
                 unordered_map<int, double>::iterator it;
                 for(it = token->features->begin(); it != token->features->end(); it++){
-                    string fname = extractor->id2feature->at((*it).first);
-                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
-                        element++;
-                    }
+//                    string fname = extractor->id2feature->at((*it).first);
+//                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
+//                        element++;
+//                    }
+                    element++;
                 }
+                prob->l++;
+
+//                if(token->features->size() == 0)
+//                    element++;
+
                 element++;
             }
         }
@@ -291,20 +309,36 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
         for(int sen_id = 0; sen_id < docs->at(doc_id)->size(); sen_id++){
             for(int tok_id = 0; tok_id < docs->at(doc_id)->sentence_size(sen_id); tok_id++){
                 Token *token = docs->at(doc_id)->get_token(sen_id, tok_id);
+                if(token->features->size() == 0) continue;
 
                 int label = stoi(label2id->at(token->label));
 
                 prob->x[ins] = &x_space[fea];
                 prob->y[ins] = label;
+#ifdef WEIGHT
+//                if(doc_id >= docs->size()-1) {
+//                    if(isalpha(token->surface[0]))
+//                        prob->W[ins] = 1.5;
+//                    else
+//                        prob->W[ins] = 1.5;
+//                }
+//                else {
+                    if (token->label == "O")
+                        prob->W[ins] = 0.1;
+                    else
+                        prob->W[ins] = 1;
+//                }
+#endif
 
                 vector<int> features;
                 unordered_map<int, double>::iterator it;
                 for (it = token->features->begin(); it != token->features->end(); ++it) {
                     int fid = (*it).first;
-                    string fname = extractor->id2feature->at(fid);
-                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
-                        features.push_back(fid);
-                    }
+//                    string fname = extractor->id2feature->at(fid);
+//                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
+//                        features.push_back(fid);
+//                    }
+                    features.push_back(fid);
                 }
 
                 sort(features.begin(), features.end());
@@ -315,11 +349,7 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                 }
 
                 if(features.size() == 0) {
-                    x_space[fea].index = 1;
-                    x_space[fea].value = 0;
-                    fea++;
-                    max_index = max(max_index, 1);
-//                    cout << "0 features " << endl;
+                    cout << "0 features " << endl;
                 }
                 else
                     max_index = max(max_index, features.back());
@@ -330,6 +360,7 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                 x_space[fea++].index = -1;
 
                 ins++;
+
             }
         }
     }
@@ -344,31 +375,27 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
     else
         prob->n=max_index;
 
-#ifdef WEIGHT
-    for(int i = 0; i < prob->l; i++)
-        prob->W[i] = 1;
-#endif
     cout << "#training instances " << prob->l << endl;
     return prob;
 }
 
-struct problem ** build_svm_problem1(vector<Document *> *docs, FeatureExtractor *extractor){
+struct problem ** build_svm_problem1(const char *train_dir, FeatureExtractor *extractor){
 
     struct problem **problems = (struct problem **) malloc(label2id->size() * sizeof(struct problem));
     for(int i = 0; i < label2id->size(); i++){
+        vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
         cout << "Building svm problem " << i << endl;
         extractor->gf_set = -1;
-        problems[i] = build_svm_problem(docs, extractor);
+        problems[i] = build_svm_problem(train_docs, extractor);
         for(int j = 0; j < problems[i]->l; j++){
             if(problems[i]->y[j] == i)
                 problems[i]->y[j] = +1;
             else
                 problems[i]->y[j] = -1;
         }
-        break;
+        free_docs(train_docs);
     }
 
-    free_docs(docs);
     return problems;
 }
 
@@ -423,7 +450,7 @@ model ** train_ner1(struct problem **probs, int solver, double c, double eps, do
 #ifdef POLY2
     param.gamma =gamma;
     param.coef0 = coef;
-    for(int i = 0; i < 1; i++) {
+    for(int i = 0; i < label2id->size(); i++) {
         probs[i]->gamma = param.gamma;
         probs[i]->coef0 = param.coef0;
     }
@@ -436,6 +463,7 @@ model ** train_ner1(struct problem **probs, int solver, double c, double eps, do
         cout << "training model " << label << endl;
 //        cout << probs[label]->l << " " << probs[label]->n << " " << endl;
         models[label] = train(probs[label], &param);
+        cout << "#features in model " << models[label]->nr_feature << endl;
     }
 
     destroy_param(&param);
@@ -450,6 +478,8 @@ model ** train_ner1(struct problem **probs, int solver, double c, double eps, do
  * @param model
  */
 void predict_ner(vector<Document *> *docs, FeatureExtractor *extractor, model *model){
+
+    extractor->training = false;
 
     cout << "Predicting..." << endl;
 
@@ -519,6 +549,8 @@ void predict_ner1(vector<Document *> *docs, FeatureExtractor *extractor, model *
     int max_nr_attr = 64;
     x = (struct feature_node *) malloc(max_nr_attr * sizeof(struct feature_node));
     int nr_feature=get_nr_feature(models[0]);
+    for(int i = 1; i < label2id->size(); i++)
+        nr_feature = max(nr_feature, models[i]->nr_feature);
     int n;
     if(models[0]->bias>=0)
         n=nr_feature+1;
@@ -629,9 +661,41 @@ void predict_ner1(vector<Document *> *docs, FeatureExtractor *extractor, model *
 //    printf("Overall precision %.2f recall %.2f f1 %.2f\n", pre*100, rec*100, 200*pre*rec/(pre+rec));
 //
 //}
+
+void fix_amharic_offsets(vector<Document *> *docs){
+
+    // note that the offsets are in the third and forth columns
+    vector<Document *> *off_docs = readColumnFormatFiles("/shared/corpora/ner/lorelei/am/All-offsets/");
+    for(int i = 0; i < docs->size(); i++){
+        Document *doc = docs->at(i);
+        Document *doc_;
+        for(int i_ = 0; i_ < off_docs->size(); i_++){
+            if(off_docs->at(i_)->id == doc->id){
+                doc_ = off_docs->at(i_);
+                break;
+            }
+        }
+
+        for(int j = 0; j < doc->size(); j++){
+            for(int k = 0; k < doc->sentence_size(j); k++){
+                Token *token = doc->get_token(j, k);
+                Token *offtoken = doc_->get_token(j, k);
+                token->start_offset = offtoken->start_offset;
+                token->end_offset = offtoken->end_offset;
+                token->surface = offtoken->surface;
+            }
+        }
+    }
+
+}
+
 void writeTACFormat(vector<Document *> *docs, string outfile, string noun_type){
 
+    fix_amharic_offsets(docs);
+
     ofstream out(outfile);
+
+    int cnt = 0;
 
     for(int doc_id = 0; doc_id < docs->size(); doc_id++){
         Document *doc = docs->at(doc_id);
@@ -647,15 +711,20 @@ void writeTACFormat(vector<Document *> *docs, string outfile, string noun_type){
                     (token->prediction == "O" || (token->prediction[0] == 'B' ) || pred_type != pred_ptype)) { // end of a phrase
 
                     int start = doc->get_token(sen_id, pred_start)->start_offset;
-                    int end = doc->get_token(sen_id, tok_id-1)->end_offset-1;
+                    int end = doc->get_token(sen_id, tok_id-1)->end_offset;
 
-                    string type = doc->get_token(sen_id, pred_start)->get_pred_type();
+                    if(start != -1 && end != -1) {
 
-                    string surface = doc->get_token(sen_id, pred_start)->surface;
-                    for(int i = pred_start+1; i <= tok_id-1; i++)
-                        surface += " "+doc->get_token(sen_id, i)->surface;
+                        string type = doc->get_token(sen_id, pred_start)->get_pred_type();
 
-                    out << "x\tx\t"+surface+"\t"+doc->id+":"+to_string(start)+"-"+to_string(end)+"\tx\t"+type+"\t"+noun_type+"\t1\n";
+                        string surface = doc->get_token(sen_id, pred_start)->surface;
+                        for (int i = pred_start + 1; i < tok_id ; i++)
+                            surface += " " + doc->get_token(sen_id, i)->surface;
+
+                        out << "UIUC\t" + to_string(cnt++) + "\t" + surface + "\t" + doc->id + ":" + to_string(start) +
+                               "-" + to_string(end) + "\tx\t" + type + "\t" + noun_type + "\t1\n";
+                    }
+
                 }
 
 
@@ -672,13 +741,13 @@ void writeTACFormat(vector<Document *> *docs, string outfile, string noun_type){
 
                 int last = doc->sentence_size(sen_id)-1;
                 int start = doc->get_token(sen_id, pred_start)->start_offset;
-                int end = doc->get_token(sen_id, last)->end_offset-1;
+                int end = doc->get_token(sen_id, last)->end_offset;
 
                 string type = doc->get_token(sen_id, pred_start)->get_pred_type();
                 string surface = doc->get_token(sen_id, pred_start)->surface;
                 for(int i = pred_start+1; i <= last; i++)
                     surface += " "+doc->get_token(sen_id, i)->surface;
-                out << "x\tx\t"+surface+"\t"+doc->id+":"+to_string(start)+"-"+to_string(end)+"\tx\t"+type+"\t"+noun_type+"\t1\n";
+                out << "UIUC\t"+to_string(cnt++)+"\t"+surface+"\t"+doc->id+":"+to_string(start)+"-"+to_string(end)+"\tx\t"+type+"\t"+noun_type+"\t1\n";
             }
         }
     }
@@ -843,22 +912,19 @@ void select_features(struct problem *train_prob, FeatureExtractor *extractor, do
     exit(-1);
 }
 
-void select_features1(struct problem **train_probs, FeatureExtractor *extractor, double c, string out_file){
+void select_features1(struct problem *train_prob, FeatureExtractor *extractor, double c, string out_file){
 
     extractor->filter_features = false;
 #ifdef POLY2
     cout << "poly2 is set in feature selection!" << endl;
     exit(-1);
 #endif
-    struct model **models;// = train_ner1(train_probs, L1R_L2LOSS_SVC, c, 0.01,0,0);
+    struct model *model = train_ner(train_prob, L1R_L2LOSS_SVC, c, 0.01,0,0);
 
-    for(int i = 0; i < label2id->size(); i++){
-        ofstream outfile(out_file+"_"+to_string(i));
-        int nf = models[i]->nr_feature;
-        if(models[i]->bias >= 0)
-            nf--;
-        for(int j = 0; j < nf; j++) {
-            double w = models[i]->w[j];
+    for(int i = 0; i < model->nr_class; i++){
+        ofstream outfile(out_file+"_"+to_string(model->label[i]));
+        for(int j = 0; j < model->nr_feature; j++) {
+            double w = model->w[j*model->nr_class+i];
             if(w != 0){
                 int fid = j+1;
                 string fname = extractor->id2feature->at(fid);
@@ -867,12 +933,393 @@ void select_features1(struct problem **train_probs, FeatureExtractor *extractor,
         }
         outfile.close();
     }
+
     exit(-1);
 }
 
 void free_docs(vector<Document *> *docs){
     for(int i = 0; i < docs->size(); i++)
         delete docs->at(i);
+}
+
+struct problem * build_selftrain_problem1(vector<Document *> *docs, vector<Document *> *odocs, FeatureExtractor *extractor, model *model){
+
+
+    cout << "Predicting on unlabeled data..." << endl;
+    struct feature_node *x;
+    int max_nr_attr = 64;
+    x = (struct feature_node *) malloc(max_nr_attr * sizeof(struct feature_node));
+    int nr_feature=get_nr_feature(model);
+    int n;
+    if(model->bias>=0)
+        n=nr_feature+1;
+    else
+        n=nr_feature;
+
+    extractor->training = false;
+
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++){
+        Document *doc = docs->at(doc_id);
+        extractor->gen_brown_cache(doc);
+        extractor->gen_gazetteer_cache(doc);
+        for(int sen_id = 0; sen_id < doc->size(); sen_id++){
+            Sentence *sen = doc->get_sentence(sen_id);
+            for(int tok_id = 0; tok_id < sen->size(); tok_id++){
+                extractor->extract(doc, sen_id, tok_id);
+                Token *token = doc->get_token(sen_id, tok_id);
+
+                vector<int> features;
+                unordered_map<int, double>::iterator it;
+                for (it = token->features->begin(); it != token->features->end(); ++it)
+                    features.push_back((*it).first);
+                sort(features.begin(), features.end());
+                int k = 0;
+                for(int f: features) {
+                    if (k >= max_nr_attr - 2)    // need one more for index = -1
+                    {
+                        max_nr_attr *= 2;
+                        x = (struct feature_node *) realloc(x, max_nr_attr * sizeof(struct feature_node));
+                    }
+                    x[k].index = f;
+                    x[k].value = token->features->at(f);
+
+                    if(x[k].index <= nr_feature)
+                        k++;
+                }
+                if(model->bias>=0)
+                {
+                    x[k].index = n;
+                    x[k].value = model->bias;
+                    k++;
+                }
+                x[k].index = -1;
+                int predict_label = (int)predict(model, x);
+                token->label = id2label->at(predict_label);
+            }
+        }
+    }
+    free(x);
+
+
+    extractor->training = true;
+    int l = 0;
+    int element = 0;
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++) {
+        Document *doc = docs->at(doc_id);
+        doc->clear_features();
+        for (int sen_id = 0; sen_id < doc->size(); sen_id++) {
+            Sentence *sen = doc->get_sentence(sen_id);
+            for (int tok_id = 0; tok_id < sen->size(); tok_id++) {
+                extractor->extract(doc, sen_id, tok_id);
+                Token *token = doc->get_token(sen_id, tok_id);
+                l++;
+                element += token->features->size() + 1;
+            }
+        }
+    }
+    for(int doc_id = 0; doc_id < odocs->size(); doc_id++) {
+        Document *doc = odocs->at(doc_id);
+        for (int sen_id = 0; sen_id < doc->size(); sen_id++) {
+            Sentence *sen = doc->get_sentence(sen_id);
+            for (int tok_id = 0; tok_id < sen->size(); tok_id++) {
+                Token *token = doc->get_token(sen_id, tok_id);
+                l++;
+                element += token->features->size() + 1;
+            }
+        }
+        docs->push_back(doc);
+    }
+
+    cout << "Building unlabeled SVM problem" << endl;
+
+    struct problem *prob = new problem();
+    struct feature_node *x_space;
+
+    prob->bias = model->bias;
+
+    int n_labels = label2id->size();
+    prob->l = l;
+    prob->y = (double *) malloc(prob->l*sizeof(double));
+    prob->x = (struct feature_node **) malloc(prob->l*sizeof(struct feature_node));
+    x_space = (struct feature_node *) malloc((element+l)*sizeof(struct feature_node));
+#ifdef WEIGHT
+    prob->W = (double *) malloc(prob->l*sizeof(double));
+#endif
+
+    int max_index = 0;
+    int ins = 0;
+    int fea = 0;
+
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++){
+        Document *doc = docs->at(doc_id);
+        for(int sen_id = 0; sen_id < docs->at(doc_id)->size(); sen_id++){
+            for(int tok_id = 0; tok_id < docs->at(doc_id)->sentence_size(sen_id); tok_id++){
+                Token *token = doc->get_token(sen_id, tok_id);
+
+                int label = stoi(label2id->at(token->label));
+
+                prob->x[ins] = &x_space[fea];
+                prob->y[ins] = label;
+#ifdef WEIGHT
+                if(doc_id < docs->size()-odocs->size()){
+                    if (token->label == "O")
+                        prob->W[ins] = 0.1;
+                    else
+                        prob->W[ins] = 0.3;
+
+                }
+                else {
+                    if (token->label == "O")
+                        prob->W[ins] = 0.1;
+                    else
+                        prob->W[ins] = 1;
+                }
+#endif
+                vector<int> features;
+                unordered_map<int, double>::iterator it;
+                for (it = token->features->begin(); it != token->features->end(); ++it)
+                    features.push_back((*it).first);
+                sort(features.begin(), features.end());
+                for (int f: features) {
+                    x_space[fea].index = f;
+                    x_space[fea].value = token->features->at(f);
+                    fea++;
+                }
+                max_index = max(max_index, features.back());
+
+                if(prob->bias >= 0)
+                    x_space[fea++].value = prob->bias;
+
+                x_space[fea++].index = -1;
+
+                ins++;
+            }
+        }
+    }
+
+    if(prob->bias >= 0)
+    {
+        prob->n=max_index+1;
+        for(int i=1;i<prob->l;i++)
+            (prob->x[i]-2)->index = prob->n;
+        x_space[fea-2].index = prob->n;
+    }
+    else
+        prob->n=max_index;
+
+    cout << "#training instances " << prob->l << endl;
+    return prob;
+}
+
+struct problem * build_selftrain_problem(vector<Document *> *docs, vector<Document *> *prev_docs, FeatureExtractor *extractor, model *model){
+
+    int l = 0;
+    int element = 0;
+
+    cout << "Predicting on unlabeled data..." << endl;
+    struct feature_node *x;
+    int max_nr_attr = 64;
+    x = (struct feature_node *) malloc(max_nr_attr * sizeof(struct feature_node));
+    int nr_feature=get_nr_feature(model);
+    int n;
+    if(model->bias>=0)
+        n=nr_feature+1;
+    else
+        n=nr_feature;
+
+    extractor->training = false;
+
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++){
+        Document *doc = docs->at(doc_id);
+        extractor->gen_brown_cache(doc);
+        extractor->gen_gazetteer_cache(doc);
+        for(int sen_id = 0; sen_id < doc->size(); sen_id++){
+            Sentence *sen = doc->get_sentence(sen_id);
+            for(int tok_id = 0; tok_id < sen->size(); tok_id++){
+                extractor->extract(doc, sen_id, tok_id);
+                Token *token = doc->get_token(sen_id, tok_id);
+
+//                string prev_label = prev_docs->at(doc_id)->get_token(sen_id, tok_id)->label;
+//                if(prev_label[0] == 'U') prev_label[0] = 'B';
+//                if(prev_label[0] == 'L') prev_label[0] = 'I';
+//                token->label = prev_label;
+
+                l++;
+                element += token->features->size() + 1;
+
+                vector<int> features;
+                unordered_map<int, double>::iterator it;
+                for (it = token->features->begin(); it != token->features->end(); ++it)
+                    features.push_back((*it).first);
+                sort(features.begin(), features.end());
+                int k = 0;
+                for(int f: features) {
+                    if (k >= max_nr_attr - 2)    // need one more for index = -1
+                    {
+                        max_nr_attr *= 2;
+                        x = (struct feature_node *) realloc(x, max_nr_attr * sizeof(struct feature_node));
+                    }
+                    x[k].index = f;
+                    x[k].value = token->features->at(f);
+
+                    if(x[k].index <= nr_feature)
+                        k++;
+                }
+                if(model->bias>=0)
+                {
+                    x[k].index = n;
+                    x[k].value = model->bias;
+                    k++;
+                }
+                x[k].index = -1;
+
+                int predict_label = (int)predict(model, x);
+//                double *dec_values = (double *) malloc(model->nr_class*sizeof(double));
+//                int predict_label = (int)predict_values(model, x, dec_values);
+
+                token->prediction = id2label->at(predict_label);
+
+//                free(dec_values);
+            }
+        }
+    }
+    free(x);
+
+    bilou_to_bio(docs);
+
+    // merge predictions into golds
+    int new_mention = 0;
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++) {
+        Document *doc = docs->at(doc_id);
+        for (int sen_id = 0; sen_id < doc->size(); sen_id++) {
+            Sentence *sen = doc->get_sentence(sen_id);
+            int gold_start = -1, pred_start = -1, gold_end = -1;
+            int prev_gold_start = -1, prev_gold_end = -1;
+            string gold_ptype = "", pred_ptype = "";
+            for (int tok_id = 0; tok_id < sen->size(); tok_id++) {
+                Token *token = doc->get_token(sen_id, tok_id);
+                string gold_type = token->get_gold_type();
+                if (gold_start > -1 &&
+                    (token->label == "O" || token->label[0] == 'B' || gold_type != gold_ptype)) { // end of a phrase
+                    prev_gold_start = gold_start;
+                    prev_gold_end = gold_end;
+                }
+
+                string pred_type = token->get_pred_type();
+                if (pred_start > -1 &&
+                    (token->prediction == "O" || (token->prediction[0] == 'B') || pred_type != pred_ptype)) { // end of a phrase
+
+                    if(pred_start >= prev_gold_end && gold_start == -1){
+                        for(int k = pred_start; k < tok_id; k++) {
+                            doc->get_token(sen_id, k)->label = doc->get_token(sen_id, k)->prediction;
+                            doc->get_token(sen_id, k)->prediction = "yo";
+                        }
+
+                        new_mention++;
+                    }
+                }
+
+
+                if (token->label[0] == 'B')
+                    gold_start = tok_id;
+                else if (token->label == "O" || gold_type != gold_ptype)
+                    gold_start = -1;
+
+                if (token->prediction[0] == 'B')
+                    pred_start = tok_id;
+                else if (token->prediction == "O" || pred_type != pred_ptype)
+                    pred_start = -1;
+
+                gold_ptype = gold_type;
+                pred_ptype = pred_type;
+            }
+        }
+        doc->clear_features();
+    }
+
+    cout << "#new annotations added " << new_mention << endl;
+
+    cout << "Building unlabeled SVM problem" << endl;
+
+    extractor->training = true;
+
+    struct problem *prob = new problem();
+    struct feature_node *x_space;
+
+    prob->bias = model->bias;
+
+    int n_labels = label2id->size();
+    prob->l = l;
+    prob->y = (double *) malloc(prob->l*sizeof(double));
+    prob->x = (struct feature_node **) malloc(prob->l*sizeof(struct feature_node));
+    x_space = (struct feature_node *) malloc((element+l)*sizeof(struct feature_node));
+#ifdef WEIGHT
+    prob->W = (double *) malloc(prob->l*sizeof(double));
+#endif
+
+    int max_index = 0;
+    int ins = 0;
+    int fea = 0;
+
+//    ofstream outfile("tmp");
+
+    bio_to_bilou(docs);
+
+    for(int doc_id = 0; doc_id < docs->size(); doc_id++){
+        Document *doc = docs->at(doc_id);
+        for(int sen_id = 0; sen_id < docs->at(doc_id)->size(); sen_id++){
+            for(int tok_id = 0; tok_id < docs->at(doc_id)->sentence_size(sen_id); tok_id++){
+                extractor->extract(doc, sen_id, tok_id);
+                Token *token = doc->get_token(sen_id, tok_id);
+
+                int label = stoi(label2id->at(token->label));
+
+                prob->x[ins] = &x_space[fea];
+                prob->y[ins] = label;
+#ifdef WEIGHT
+                if(token->prediction == "yo")
+                    prob->W[ins] = 0.6;
+                else if(token->label == "O")
+                    prob->W[ins] = 0.1;
+                else
+                    prob->W[ins] = 1;
+#endif
+
+
+                vector<int> features;
+                unordered_map<int, double>::iterator it;
+                for (it = token->features->begin(); it != token->features->end(); ++it)
+                    features.push_back((*it).first);
+                sort(features.begin(), features.end());
+                for (int f: features) {
+                    x_space[fea].index = f;
+                    x_space[fea].value = token->features->at(f);
+                    fea++;
+                }
+                max_index = max(max_index, features.back());
+
+                if(prob->bias >= 0)
+                    x_space[fea++].value = prob->bias;
+
+                x_space[fea++].index = -1;
+
+                ins++;
+            }
+        }
+    }
+
+    if(prob->bias >= 0)
+    {
+        prob->n=max_index+1;
+        for(int i=1;i<prob->l;i++)
+            (prob->x[i]-2)->index = prob->n;
+        x_space[fea-2].index = prob->n;
+    }
+    else
+        prob->n=max_index;
+
+    cout << "#training instances " << prob->l << endl;
+    return prob;
 }
 
 struct problem * build_semi_problem(vector<Document *> *docs, FeatureExtractor *extractor, model *model){

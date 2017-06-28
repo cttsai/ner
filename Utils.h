@@ -12,9 +12,10 @@
 #include "dirent.h"
 #include "FeatureExtractor.h"
 #include <algorithm>
-#include <linear-poly2.h>
-//#include <linear-weight.h>
+//#include <linear-poly2.h>
+#include <linear-weight.h>
 //#include <linear.h>
+//#include "liblinear-poly2-2.01/linear.h"
 
 extern unordered_map<string, string> *label2id;
 extern unordered_map<int, string> *id2label;
@@ -33,10 +34,13 @@ void free_docs(vector<Document *> *docs);
 void writeTACFormat(vector<Document *> *docs, string outfile, string noun_type);
 struct problem * build_semi_problem(vector<Document *> *docs, FeatureExtractor *extractor, model *model);
 void free_models(struct model **models);
-void select_features1(struct problem **train_probs, FeatureExtractor *extractor, double c, string out_file);
-struct problem ** build_svm_problem1(vector<Document *> *docs, FeatureExtractor *extractor);
+void select_features1(struct problem *train_prob, FeatureExtractor *extractor, double c, string out_file);
+struct problem ** build_svm_problem1(const char *train_dir, FeatureExtractor *extractor);
 void predict_ner1(vector<Document *> *docs, FeatureExtractor *extractor, model **model);
 model ** train_ner1(struct problem **probs, int solver, double c, double eps, double gamma, double coef);
 void generate_features(vector<Document *> *docs, FeatureExtractor *extractor);
+struct problem * build_selftrain_problem(vector<Document *> *docs, vector<Document *> *prev_docs, FeatureExtractor *extractor, model *model);
+void writeColumnFormatFiles(vector<Document *> *docs, string dir);
+struct problem * build_selftrain_problem1(vector<Document *> *docs, vector<Document *> *odocs, FeatureExtractor *extractor, model *model);
 
 #endif //NER_UTILS_H
