@@ -79,9 +79,10 @@ void pronominal_exp(){
 
     const char *train_dir = "/shared/corpora/ner/pronominal_exp/es/es.ere.PRO.spe1/";
 //    const char *train_dir = "/shared/corpora/ner/pronominal_exp/es/es.ere.PRO.spe1.train/";
-    const char *test_dir = "/shared/corpora/ner/pronominal_exp/es/es.ere.PRO.spe1.test/";
+//    const char *test_dir = "/shared/corpora/ner/pronominal_exp/es/es.ere.PRO.spe1.test/";
 
 //    const char *test_dir = "/shared/experiments/ctsai12/workspace/xlwikifier-demo/TAC2016.df2.spanish.predictions/";
+    const char *test_dir = "/shared/bronte/Tinkerbell/EDL/cold_start_outputs/es/TAC2017.es.conll/";
 
     FeatureExtractor *extractor = new FeatureExtractor();
 //    extractor->filter_features = true;
@@ -124,7 +125,7 @@ void pronominal_exp(){
 
     double max_f1 = 0;
     double max_seg = 0;
-    for(int i = 0; i < 10; i++){
+    for(int i = 0; i < 1; i++){
 
         cout << "c " << c  << endl;
         struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, 1, 1);
@@ -135,9 +136,9 @@ void pronominal_exp(){
         predict_ner(test_docs, extractor, model);
         free_and_destroy_model(&model);
         bilou_to_bio(test_docs);
-        double f1 = evaluate_phrases(test_docs);
-//        writeTACFormat(test_docs, "df2.pro", "PRO");
-        max_f1 = max(max_f1, f1);
+        //double f1 = evaluate_phrases(test_docs);
+        writeTACFormat(test_docs, "/shared/bronte/Tinkerbell/EDL/cold_start_outputs/es/TAC2017.es.nw.pro", "PRO");
+        //max_f1 = max(max_f1, f1);
         free_docs(test_docs);
         c/=2;
     }
@@ -148,15 +149,16 @@ void nominal_exp(){
 
     set_tac_types();
 
-//    const char *train_dir = "/shared/corpora/ner/nominal_exp/ere+tac/"; // use this for eval!!
+    const char *train_dir = "/shared/corpora/ner/nominal_exp/ere+tac/"; // use this for eval!!
 
 //    const char *train_dir = "/shared/corpora/ner/nominal_exp/es.tac.NOM.train-nerf/";
 //    const char *train_dir = "/shared/corpora/ner/nominal_exp/es.ere.NOM1.spe/";
-    const char *train_dir = "/shared/corpora/ner/nominal_exp/ere+train/";
+//    const char *train_dir = "/shared/corpora/ner/nominal_exp/ere+train/";
 //    const char *test_dir = "/shared/corpora/ner/nominal_exp/es.tac.NOM-nerf/";
-    const char *test_dir = "/shared/corpora/ner/nominal_exp/es.tac.NOM.test-nerf/";
+//    const char *test_dir = "/shared/corpora/ner/nominal_exp/es.tac.NOM.test-nerf/";
 
-//    test_dir = "/shared/experiments/ctsai12/workspace/xlwikifier-demo/TAC2016.df2.spanish.predictions/";
+    //const char *test_dir = "/shared/experiments/ctsai12/workspace/xlwikifier-demo/TAC2016.df2.spanish.predictions/";
+    const char *test_dir = "/shared/bronte/Tinkerbell/EDL/cold_start_outputs/es/TAC2017.es.conll/";
 
     FeatureExtractor *extractor = new FeatureExtractor();
 //    extractor->filter_features = true;
@@ -193,16 +195,14 @@ void nominal_exp(){
     extractor->training = false;
 
 //    double c = 0.0625;
-    double c = 0.125;
 
-//    double c = 0.03125; // use this for eval!
+    double c = 0.03125; // use this for eval!
 
     vector<Document *> *test_docs;
 
     double max_f1 = 0;
     double max_seg = 0;
-    for(int i = 0; i < 10; i++){
-
+    for(int i = 0; i < 1; i++){
         cout << "c " << c << endl;
         struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, 1, 1);
         cout << "#features " << model->nr_feature << endl;
@@ -211,9 +211,9 @@ void nominal_exp(){
         predict_ner(test_docs, extractor, model);
         free_and_destroy_model(&model);
         bilou_to_bio(test_docs);
-        double f1 = evaluate_phrases(test_docs);
-//                writeTACFormat(test_docs, "df2");
-        max_f1 = max(max_f1, f1);
+        //double f1 = evaluate_phrases(test_docs);
+        writeTACFormat(test_docs, "/shared/bronte/Tinkerbell/EDL/cold_start_outputs/es/TAC2017.es.nw.nom", "NOM");
+        //max_f1 = max(max_f1, f1);
         free_docs(test_docs);
         c/=2;
     }
@@ -237,8 +237,8 @@ void conll_exp(){
 
 
     FeatureExtractor *extractor = new FeatureExtractor();
-    extractor->read_good_features("good_features_0.15_fw3");
-    extractor->form_context_size = 3;
+//    extractor->read_good_features("good_features_0.15_fw3");
+//    extractor->form_context_size = 3;
 //    extractor->brown_context_size = 3;
 //    extractor->gazetteer_context_size = 1;
 //    extractor->use_gazetteer = false;
@@ -252,7 +252,7 @@ void conll_exp(){
 
     extractor->training = false;
 
-    double c = 0.5;
+    double c = 8;
 
 //    select_features(train_prob, extractor, c, "good_features_0.17_fw3");
 
@@ -260,7 +260,7 @@ void conll_exp(){
     vector<Document *> *dev_docs;
     ofstream paramfile("tmp");
 
-    for(int i = 0; i < 1; i++){
+    for(int i = 0; i < 10; i++){
         double gamma = 1;
         for(int j = 0; j < 1; j++) {
             double coef = 8;
@@ -467,6 +467,7 @@ void run_sota(){
     FeatureExtractor *extractor = new FeatureExtractor();
     extractor->read_good_features("good_features_0.15_fw3");
     extractor->form_context_size = 3;
+    extractor->form_conj = false;
 
     vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
     clean_cap_words(train_docs);
@@ -509,8 +510,9 @@ void am_exp(){
 
     set_lorelei_types();
 
-//    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/final-test2-stem-wiki/";
-    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-stem/";
+    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/final-test2-stem-wiki/";
+    //const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/";
+    //const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/uiuc+rpi/";
 //    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/final-test2.bak-stem/";
 //    const char *train_dir = "/shared/corpora/ner/translate/am/Train-stem/";
 //    const char *test_dir = "/shared/corpora/ner/lorelei/am/All-nosn-stem/";
@@ -548,9 +550,10 @@ void am_exp(){
 //    vector<Document *> *train_docs1 = readColumnFormatFiles(mono);
 
 //    vector<Document *> *train_docs2 = readColumnFormatFiles(train_dir);
-//    vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/ner/translate/am/Train-tac-stem/");
-//    for(int i = 0; i < en_docs->size(); i++)
-//        train_docs->push_back(en_docs->at(i));
+    //vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/ner/translate/am/Train-tac-stem/");
+	vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/");
+    for(int i = 0; i < en_docs->size(); i++)
+        train_docs->push_back(en_docs->at(i));
 //    clean_cap_words(train_docs);
     bio_to_bilou(train_docs);
 //    bio_to_bilou(train_docs1);
@@ -570,7 +573,7 @@ void am_exp(){
     vector<Document *> *test_docs;
     ofstream paramfile("tmp");
 
-    double c = 0.03125;
+    double c = 0.125;
 
     for(int i = 0; i < 8; i++){
         double gamma = 1;
@@ -609,12 +612,12 @@ void am_exp(){
 int main() {
 
 //    semisup_exp();
-//    conll_exp();
+    conll_exp();
 //    separate_prob_exp(); // still buggy
 //    nominal_exp();
 //    pronominal_exp();
 
-    am_exp();
+//    am_exp();
 
     // this should use liblinear-poly2 library, not the one inside this project
 //    run_sota();

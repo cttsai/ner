@@ -45,6 +45,7 @@ public:
     bool use_gazetteer = true;
     bool use_hyphen = true;
     bool use_wikifier = false;
+    bool form_conj = true;
 
     bool brown_initialized = false;
     bool gazetteer_initialized = false;
@@ -58,7 +59,7 @@ public:
 
     int gf_set = -1;
     vector<unordered_set<string> *> *good_features1 = NULL;
-    string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt";
+    string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt__";
     vector<string> brown_cluster_paths{
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",

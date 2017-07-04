@@ -13,8 +13,8 @@
 #include "FeatureExtractor.h"
 #include <algorithm>
 //#include <linear-poly2.h>
-#include <linear-weight.h>
-//#include <linear.h>
+//#include <linear-weight.h>
+#include <linear.h>
 //#include "liblinear-poly2-2.01/linear.h"
 
 extern unordered_map<string, string> *label2id;

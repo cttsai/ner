@@ -316,18 +316,20 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                 prob->x[ins] = &x_space[fea];
                 prob->y[ins] = label;
 #ifdef WEIGHT
-//                if(doc_id >= docs->size()-1) {
-//                    if(isalpha(token->surface[0]))
-//                        prob->W[ins] = 1.5;
-//                    else
-//                        prob->W[ins] = 1.5;
-//                }
-//                else {
+				/*
+                if(doc_id >= docs->size()-1) {
+                    if(token->label == "O")
+                        prob->W[ins] = 0.8;
+                    else
+                        prob->W[ins] = 2;
+                }
+                else {
+				*/
                     if (token->label == "O")
                         prob->W[ins] = 0.1;
                     else
                         prob->W[ins] = 1;
-//                }
+               // }
 #endif
 
                 vector<int> features;
@@ -508,7 +510,7 @@ void predict_ner(vector<Document *> *docs, FeatureExtractor *extractor, model *m
                     features.push_back((*it).first);
                 sort(features.begin(), features.end());
 
-                int k = 0;
+				int k = 0;
                 for(int f: features) {
                     if (k >= max_nr_attr - 2)    // need one more for index = -1
                     {
@@ -691,7 +693,7 @@ void fix_amharic_offsets(vector<Document *> *docs){
 
 void writeTACFormat(vector<Document *> *docs, string outfile, string noun_type){
 
-    fix_amharic_offsets(docs);
+    //fix_amharic_offsets(docs);
 
     ofstream out(outfile);
 

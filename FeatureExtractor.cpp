@@ -146,17 +146,17 @@ void FeatureExtractor::forms(Document *doc, int sen_id, int tok_id) {
             add_feature(target, to_string(j)+":"+norm, 1);
 
             // conjunction with previous tag
-//            if(tok_id > 0) {
-//                string plabel;
-//                if(training)
-//                    plabel = doc->get_token(sen_id, tok_id-1)->label;
-//                else
-//                    plabel = doc->get_token(sen_id, tok_id-1)->prediction;
-//
-//                add_feature(target, to_string(j)+":"+word+":"+plabel, 1);
-//                add_feature(target, to_string(j)+":"+norm+":"+plabel, 1);
-//
-//            }
+            if(form_conj && tok_id > 0) {
+                string plabel;
+                if(training)
+                    plabel = doc->get_token(sen_id, tok_id-1)->label;
+                else
+                    plabel = doc->get_token(sen_id, tok_id-1)->prediction;
+
+                add_feature(target, to_string(j)+":"+word+":"+plabel, 1);
+                add_feature(target, to_string(j)+":"+norm+":"+plabel, 1);
+
+            }
         }
     }
 //    if(tok_id > 0) {
