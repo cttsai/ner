@@ -58,7 +58,7 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                     wiki_feats->push_back(buf);
                 c++;
             }
-            if(surface == "-DOCSTART-") continue;
+//            if(surface == "-DOCSTART-") continue;
 
             if(surface == "-LRB-")
                 surface = "(";
@@ -72,10 +72,10 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                 token->end_offset = end;
             }
         }
-        if (sentence->size() > 0) {
-            doc->sentences->push_back(sentence);
-            sentence = new Sentence;
-        }
+//        if (sentence->size() > 0) {
+//            doc->sentences->push_back(sentence);
+//            sentence = new Sentence;
+//        }
         docs->push_back(doc);
     }
     closedir (dir);

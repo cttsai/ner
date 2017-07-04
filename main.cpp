@@ -258,7 +258,7 @@ void conll_exp(){
 
     vector<Document *> *test_docs;
     vector<Document *> *dev_docs;
-    ofstream paramfile("tmp");
+    ofstream paramfile("tmp2");
 
     for(int i = 0; i < 10; i++){
         double gamma = 1;
@@ -612,7 +612,7 @@ void am_exp(){
 int main() {
 
 //    semisup_exp();
-    conll_exp();
+//    conll_exp();
 //    separate_prob_exp(); // still buggy
 //    nominal_exp();
 //    pronominal_exp();
@@ -620,7 +620,7 @@ int main() {
 //    am_exp();
 
     // this should use liblinear-poly2 library, not the one inside this project
-//    run_sota();
+    run_sota();
 
     return 0;
 }
