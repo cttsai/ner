@@ -368,7 +368,7 @@ void FeatureExtractor::previous_tag_pattern(Document *doc, int sen_id, int tok_i
 
 void FeatureExtractor::init_brown_clusters() {
 
-    cout << "reading brown clusters..." << endl;
+    cout << "  Reading brown clusters..." << endl;
 
     brown_clusters = new vector<unordered_map<string, string> *>();
 
@@ -450,7 +450,7 @@ void FeatureExtractor::brown_cluster(Document *doc, int sen_id, int tok_id) {
 
 void FeatureExtractor::init_gazetteers() {
 
-    cout << "Reading gazetteers..." << endl;
+    cout << "  Reading gazetteers..." << endl;
 
     gazetteers = new vector<unordered_set<string> *>;
     gazetteers_nocase = new vector<unordered_set<string> *>;
@@ -597,7 +597,7 @@ void FeatureExtractor::read_good_features(string file) {
             i++;
         }
     }
-    cout << "#good features " << good_features->size() << endl;
+    cout << "Number of good features " << good_features->size() << endl;
 }
 
 void FeatureExtractor::read_good_features1(string file) {

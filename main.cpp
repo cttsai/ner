@@ -237,12 +237,14 @@ void conll_exp(){
 
 
     FeatureExtractor *extractor = new FeatureExtractor();
-//    extractor->read_good_features("good_features_0.15_fw3");
-//    extractor->form_context_size = 3;
+//    extractor->read_good_features("good_features_0.15_b20");
+    extractor->form_context_size = 3;
 //    extractor->brown_context_size = 3;
 //    extractor->gazetteer_context_size = 1;
 //    extractor->use_gazetteer = false;
 //    extractor->use_brown = false;
+    extractor->form_conj = false;
+    extractor->prefix_len.push_back(20);
 
     vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
     clean_cap_words(train_docs);
@@ -252,23 +254,23 @@ void conll_exp(){
 
     extractor->training = false;
 
-    double c = 8;
+    double c = 0.15;
 
-//    select_features(train_prob, extractor, c, "good_features_0.17_fw3");
+//    select_features(train_prob, extractor, c, "good_features_0.15_bw3");
 
     vector<Document *> *test_docs;
     vector<Document *> *dev_docs;
-    ofstream paramfile("tmp2");
+    ofstream paramfile("tmp");
 
-    for(int i = 0; i < 10; i++){
-        double gamma = 1;
+    for(int i = 0; i < 1; i++){
+        double gamma = 0.5;
         for(int j = 0; j < 1; j++) {
-            double coef = 8;
+            double coef = 16;
             for (int k = 0; k < 1; k++) {
 
                 cout << "c " << c << " gamma " << gamma << " coef " << coef << endl;
                 paramfile << "c " << c << " gamma " << gamma << " coef " << coef << endl;
-                struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, gamma, coef);
+                struct model *model = train_ner(train_prob, L1R_L2LOSS_SVC, c, 0.1, gamma, coef);
 
                 // dev
                 dev_docs = readColumnFormatFiles(dev_dir);
@@ -286,12 +288,12 @@ void conll_exp(){
                 bilou_to_bio(test_docs);
                 double f1 = evaluate_phrases(test_docs);
                 paramfile << f1_dev << " " << f1 << endl;
-//                coef /= 2;
-                coef -= 1;
+                coef /= 2;
+                //coef -= 1;
                 free_docs(test_docs);
             }
-//            gamma -= 0.25;
-            gamma /= 2;
+            gamma += 0.5;
+//            gamma /= 2;
         }
         c/=2;
 //        c -= 0.1;
@@ -458,6 +460,12 @@ void separate_prob_exp(){
 
 void run_sota(){
 
+#ifndef POLY2
+    cout << "Use poly2 version of liblinear to get the best performance" << endl;
+    cout << "Use linear-poly2.h in Utils.h and linear-poly2.o in CMakeLists.txt" << endl;
+    exit(-1);
+#endif
+
     set_conll_types();
 
     const char *train_dir = "/shared/corpora/ratinov2/NER/Data/GoldData/Reuters/ColumnFormatDocumentsSplit/Train/";
@@ -465,19 +473,17 @@ void run_sota(){
     const char *test_dir = "/shared/corpora/ratinov2/NER/Data/GoldData/Reuters/ColumnFormatDocumentsSplit/Test/";
 
     FeatureExtractor *extractor = new FeatureExtractor();
-    extractor->read_good_features("good_features_0.15_fw3");
+    extractor->read_good_features("/home/ctsai12/CLionProjects/NER/resources/good_features_0.15_b20");
     extractor->form_context_size = 3;
     extractor->form_conj = false;
+    extractor->prefix_len.push_back(20);
 
     vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
     clean_cap_words(train_docs);
     bio_to_bilou(train_docs);
-//    generate_features(train_docs, extractor);
     struct problem *train_prob = build_svm_problem(train_docs, extractor);
 
-    extractor->training = false;
-
-    double c = 0.5, gamma = 1, coef = 8;
+    double c = 0.5, gamma = 0.5, coef = 4;
 
     struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, gamma, coef);
 
@@ -511,7 +517,7 @@ void am_exp(){
     set_lorelei_types();
 
     const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/final-test2-stem-wiki/";
-    //const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/";
+//    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/";
     //const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/uiuc+rpi/";
 //    const char *train_dir = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/final-test2.bak-stem/";
 //    const char *train_dir = "/shared/corpora/ner/translate/am/Train-stem/";
@@ -551,14 +557,16 @@ void am_exp(){
 
 //    vector<Document *> *train_docs2 = readColumnFormatFiles(train_dir);
     //vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/ner/translate/am/Train-tac-stem/");
-	vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/");
-    for(int i = 0; i < en_docs->size(); i++)
-        train_docs->push_back(en_docs->at(i));
+//	vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/");
+//    for(int i = 0; i < en_docs->size(); i++)
+//        train_docs->push_back(en_docs->at(i));
 //    clean_cap_words(train_docs);
     bio_to_bilou(train_docs);
 //    bio_to_bilou(train_docs1);
 //    generate_features(train_docs, extractor);
     struct problem *train_prob = build_svm_problem(train_docs, extractor);
+
+//    writeColumnFormatFiles(train_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem-features");
 
 
 //    struct model *model1 = train_ner(train_prob, L2R_L2LOSS_SVC, 0.015625, 0.1, 1, 1);
@@ -573,9 +581,9 @@ void am_exp(){
     vector<Document *> *test_docs;
     ofstream paramfile("tmp");
 
-    double c = 0.125;
+    double c = 0.0625;
 
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 7; i++){
         double gamma = 1;
         for(int j = 0; j < 1; j++) {
             double coef = 8;
@@ -596,6 +604,7 @@ void am_exp(){
                 paramfile << "1" << " " << f1 << endl;
 //                coef /= 2;
                 coef -= 1;
+//                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/All-nosn-stem-features");
 
 //                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/column/");
 //                writeTACFormat(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/edl", "NAM");
@@ -619,7 +628,6 @@ int main() {
 
 //    am_exp();
 
-    // this should use liblinear-poly2 library, not the one inside this project
     run_sota();
 
     return 0;

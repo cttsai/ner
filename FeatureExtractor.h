@@ -59,13 +59,14 @@ public:
 
     int gf_set = -1;
     vector<unordered_set<string> *> *good_features1 = NULL;
-    string gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt__";
+    string gazetteer_list = "/home/ctsai12/CLionProjects/NER/resources/gazetteers-list.txt";
     vector<string> brown_cluster_paths{
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",
-            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt"
+            "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt",
+//            "/shared/experiments/ctsai12/workspace/brown-cluster/conll.c500/paths"
     };
-    int min_word_freq = 3;
+    int min_word_freq = 2;
     vector<int> prefix_len{4,6,10};
 
 private:

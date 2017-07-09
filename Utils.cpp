@@ -58,7 +58,7 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                     wiki_feats->push_back(buf);
                 c++;
             }
-//            if(surface == "-DOCSTART-") continue;
+            if(surface == "-DOCSTART-") continue;
 
             if(surface == "-LRB-")
                 surface = "(";
@@ -72,14 +72,14 @@ vector<Document *> * readColumnFormatFiles(const char *directory) {
                 token->end_offset = end;
             }
         }
-//        if (sentence->size() > 0) {
-//            doc->sentences->push_back(sentence);
-//            sentence = new Sentence;
-//        }
+        if (sentence->size() > 0) {
+            doc->sentences->push_back(sentence);
+            sentence = new Sentence;
+        }
         docs->push_back(doc);
     }
     closedir (dir);
-    cout << "Read " << docs->size() << " docs" << endl;
+    cout << "  Read " << docs->size() << " docs" << endl;
     return docs;
 }
 
@@ -89,12 +89,17 @@ void writeColumnFormatFiles(vector<Document *> *docs, string dir) {
 
     for(int i = 0; i < docs->size(); i++){
         Document *doc = docs->at(i);
+        cout << doc->id << endl;
         ofstream outfile(dir+"/"+doc->id);
         for(int j = 0; j < doc->sentences->size(); j++){
             Sentence *sen = doc->get_sentence(j);
             for(int k = 0; k < sen->size(); k++){
                 Token *token = doc->get_token(j, k);
-                outfile << token->prediction +"\tx\tx\tx\tx\t"+token->surface+"\tx\tx\tx\tx" << endl;
+                outfile << token->label +"\tx\tx\tx\tx\t"+token->surface+"\tx\tx\tx\tx";
+                for(auto it = token->features->begin(); it != token->features->end(); it++){
+                    outfile << "\t" << (*it).first << ":" << (*it).second;
+                }
+                outfile << endl;
             }
             outfile << endl;
         }
@@ -242,8 +247,6 @@ void generate_features(vector<Document *> *docs, FeatureExtractor *extractor){
 
 /**
  * Counstruct SVM problem
- * Features should be extracted by generate_features()
- * The FeatureExtractor here is just for filtering features
  * @param docs
  * @param extractor
  * @return SVM problem
@@ -252,8 +255,6 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
     cout << "Building training instances..." << endl;
 
     unordered_set<string> *good_features = NULL;
-//    if(extractor->gf_set >= 0 && extractor->good_features1 != NULL)
-//        good_features = extractor->good_features1->at(extractor->gf_set);
 
     struct problem *prob = new problem();
     struct feature_node *x_space;
@@ -273,20 +274,9 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                 extractor->extract(doc, sen_id, tok_id);
                 Token *token = doc->get_token(sen_id, tok_id);
                 if(token->features->size() == 0) continue;
-                unordered_map<int, double>::iterator it;
-                for(it = token->features->begin(); it != token->features->end(); it++){
-//                    string fname = extractor->id2feature->at((*it).first);
-//                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
-//                        element++;
-//                    }
-                    element++;
-                }
+
+                element += token->features->size()+1;
                 prob->l++;
-
-//                if(token->features->size() == 0)
-//                    element++;
-
-                element++;
             }
         }
     }
@@ -316,30 +306,24 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                 prob->x[ins] = &x_space[fea];
                 prob->y[ins] = label;
 #ifdef WEIGHT
-				/*
-                if(doc_id >= docs->size()-1) {
-                    if(token->label == "O")
-                        prob->W[ins] = 0.8;
-                    else
-                        prob->W[ins] = 2;
-                }
-                else {
-				*/
+//                if(doc_id >= docs->size()-1) {
+//                    if(token->label == "O")
+//                        prob->W[ins] = 0.9;
+//                    else
+//                        prob->W[ins] = 3;
+//                }
+//                else {
                     if (token->label == "O")
                         prob->W[ins] = 0.1;
                     else
                         prob->W[ins] = 1;
-               // }
+//                }
 #endif
 
                 vector<int> features;
                 unordered_map<int, double>::iterator it;
                 for (it = token->features->begin(); it != token->features->end(); ++it) {
                     int fid = (*it).first;
-//                    string fname = extractor->id2feature->at(fid);
-//                    if(good_features == NULL || good_features->find(fname) != good_features->end()){
-//                        features.push_back(fid);
-//                    }
                     features.push_back(fid);
                 }
 
@@ -350,9 +334,8 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
                     fea++;
                 }
 
-                if(features.size() == 0) {
+                if(features.size() == 0)
                     cout << "0 features " << endl;
-                }
                 else
                     max_index = max(max_index, features.back());
 
@@ -377,7 +360,8 @@ struct problem * build_svm_problem(vector<Document *> *docs, FeatureExtractor *e
     else
         prob->n=max_index;
 
-    cout << "#training instances " << prob->l << endl;
+    cout << "Number of instances " << prob->l << endl;
+    cout << "Number of features " << prob->n << endl;
     return prob;
 }
 
@@ -412,6 +396,8 @@ struct problem ** build_svm_problem1(const char *train_dir, FeatureExtractor *ex
  * @return
  */
 model * train_ner(struct problem *prob,int solver, double c, double eps, double gamma, double coef){
+
+    cout << "Training..." << endl;
 
     struct parameter param;
     param.C = c;
