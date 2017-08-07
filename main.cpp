@@ -232,19 +232,17 @@ void conll_exp(){
     const char *dev_dir = "/shared/corpora/ratinov2/NER/Data/GoldData/Reuters/ColumnFormatDocumentsSplit/Dev/";
     const char *test_dir = "/shared/corpora/ratinov2/NER/Data/GoldData/Reuters/ColumnFormatDocumentsSplit/Test/";
 
-//    train_dir = "/shared/corpora/ner/wikifier-features/tl/train-camera3/";
-//    test_dir = "/shared/corpora/ner/wikifier-features/tl/test-camera3/";
-
 
     FeatureExtractor *extractor = new FeatureExtractor();
-//    extractor->read_good_features("good_features_0.15_b20");
-    extractor->form_context_size = 3;
+//    extractor->read_good_features("good_features_0.15_wikibc1");
+//    extractor->form_context_size = 2;
 //    extractor->brown_context_size = 3;
 //    extractor->gazetteer_context_size = 1;
 //    extractor->use_gazetteer = false;
 //    extractor->use_brown = false;
-    extractor->form_conj = false;
+//    extractor->form_conj = false;
     extractor->prefix_len.push_back(20);
+    extractor->gazetteer_list = "/home/ctsai12/CLionProjects/NER/gazetteers-list.txt__";
 
     vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
     clean_cap_words(train_docs);
@@ -254,15 +252,15 @@ void conll_exp(){
 
     extractor->training = false;
 
-    double c = 0.15;
+    double c = 0.25;
 
-//    select_features(train_prob, extractor, c, "good_features_0.15_bw3");
+//    select_features(train_prob, extractor, c, "good_features_0.15_wikibc1");
 
     vector<Document *> *test_docs;
     vector<Document *> *dev_docs;
     ofstream paramfile("tmp");
 
-    for(int i = 0; i < 1; i++){
+    for(int i = 0; i < 10; i++){
         double gamma = 0.5;
         for(int j = 0; j < 1; j++) {
             double coef = 16;
@@ -270,7 +268,7 @@ void conll_exp(){
 
                 cout << "c " << c << " gamma " << gamma << " coef " << coef << endl;
                 paramfile << "c " << c << " gamma " << gamma << " coef " << coef << endl;
-                struct model *model = train_ner(train_prob, L1R_L2LOSS_SVC, c, 0.1, gamma, coef);
+                struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, gamma, coef);
 
                 // dev
                 dev_docs = readColumnFormatFiles(dev_dir);
@@ -555,7 +553,7 @@ void am_exp(){
 //    const char *mono = "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/conll-sub-stem/";
 //    vector<Document *> *train_docs1 = readColumnFormatFiles(mono);
 
-//    vector<Document *> *train_docs2 = readColumnFormatFiles(train_dir);
+    vector<Document *> *train_docs2 = readColumnFormatFiles(train_dir);
     //vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/ner/translate/am/Train-tac-stem/");
 //	vector<Document *> *en_docs = readColumnFormatFiles("/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem/");
 //    for(int i = 0; i < en_docs->size(); i++)
@@ -564,7 +562,7 @@ void am_exp(){
     bio_to_bilou(train_docs);
 //    bio_to_bilou(train_docs1);
 //    generate_features(train_docs, extractor);
-    struct problem *train_prob = build_svm_problem(train_docs, extractor);
+    struct problem *train_prob = build_weighted_svm_problem(train_docs, extractor, 0.1);
 
 //    writeColumnFormatFiles(train_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/Train-full-stem-features");
 
@@ -572,8 +570,8 @@ void am_exp(){
 //    struct model *model1 = train_ner(train_prob, L2R_L2LOSS_SVC, 0.015625, 0.1, 1, 1);
 //    struct problem *train_prob1 = build_selftrain_problem1(train_docs1, train_docs, extractor, model1);
 
-//    struct model *model2 = train_ner(train_prob1, L2R_L2LOSS_SVC, 0.03125, 0.1, 1, 1);
-//    struct problem *train_prob2 = build_selftrain_problem(train_docs2, train_docs1, extractor, model2);
+//    struct model *model1 = train_ner(train_prob, L2R_L2LOSS_SVC, 0.015625, 0.1, 1, 1);
+//    struct problem *train_prob1 = build_selftrain_problem(train_docs2, train_docs, extractor, model1);
 
 //    select_features(train_prob, extractor, c, "good_features_0.17_fw3");
     extractor->training = false;
@@ -581,41 +579,478 @@ void am_exp(){
     vector<Document *> *test_docs;
     ofstream paramfile("tmp");
 
-    double c = 0.0625;
+    double c = 0.125;
 
     for(int i = 0; i < 7; i++){
-        double gamma = 1;
-        for(int j = 0; j < 1; j++) {
-            double coef = 8;
-            for (int k = 0; k < 1; k++) {
 
-                cout << "c " << c << " gamma " << gamma << " coef " << coef << endl;
-                paramfile << "c " << c << " gamma " << gamma << " coef " << coef << endl;
-                struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, gamma, coef);
-                cout << "# features " << model->nr_feature << endl;
+		cout << "c " << c  << endl;
+		struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, 1, 1);
+		cout << "# features " << model->nr_feature << endl;
 
-                // test
-                test_docs = readColumnFormatFiles(test_dir);
-//                clean_cap_words(test_docs);
-                predict_ner(test_docs, extractor, model);
-                free_and_destroy_model(&model);
-                bilou_to_bio(test_docs);
-                double f1 = evaluate_phrases(test_docs);
-                paramfile << "1" << " " << f1 << endl;
-//                coef /= 2;
-                coef -= 1;
-//                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/All-nosn-stem-features");
+		// test
+		test_docs = readColumnFormatFiles(test_dir);
+		//                clean_cap_words(test_docs);
+		predict_ner(test_docs, extractor, model);
+		free_and_destroy_model(&model);
+		bilou_to_bio(test_docs);
+		double f1 = evaluate_phrases(test_docs);
+		//                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/rpi/All-nosn-stem-features");
 
-//                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/column/");
-//                writeTACFormat(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/edl", "NAM");
-                free_docs(test_docs);
-            }
-//            gamma -= 0.25;
-            gamma /= 2;
-        }
+		//                writeColumnFormatFiles(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/column/");
+		//                writeTACFormat(test_docs, "/shared/corpora/corporaWeb/lorelei/data/LDC2016E86_LORELEI_Amharic_Representative_Language_Pack_Monolingual_Text_V1.1/data/monolingual_text/zipped/dryrun-outputs/manual/edl", "NAM");
+		free_docs(test_docs);
         c/=2;
     }
-    paramfile.close();
+}
+void bn_exp(){
+
+
+//    set_conll_types();
+
+    set_lorelei_types();
+
+    const char *train_dir = "/shared/corpora/ner/translate/camera-ready/bn/Train/";
+    const char *test_dir = "/shared/corpora/ner/translate/camera-ready/bn/Test/";
+
+
+
+    FeatureExtractor *extractor = new FeatureExtractor();
+    extractor->use_form = false;
+//    extractor->use_affixe = false;
+    extractor->form_context_size = 2;
+    extractor->brown_context_size = 2;
+    extractor->gazetteer_context_size = 2;
+//    extractor->use_tagpattern = false;
+//    extractor->use_gazetteer = false;
+//    extractor->use_brown = false;
+    extractor->gazetteer_list = "/home/ctsai12/CLionProjects/NER/resources/gazetteers-list.txt";
+//    extractor->use_tagcontext = false;
+//    extractor->use_cap = false;
+//    extractor->use_wordtype = false;
+//    extractor->use_sen = false;
+    extractor->use_wikifier = true;
+    extractor->min_word_freq = 1;
+    extractor->prefix_len.push_back(20);
+    extractor->brown_cluster_paths.clear();
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/bndump-c1000-p1.out/paths");
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/bndump-c100-p1.out/paths");
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/bndump-c500-p1.out/paths");
+
+
+    vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
+
+//    clean_cap_words(train_docs);
+    bio_to_bilou(train_docs);
+    struct problem *train_prob = build_svm_problem(train_docs, extractor);
+
+
+    extractor->training = false;
+
+    vector<Document *> *test_docs;
+
+    double c = 8;
+
+    for(int i = 0; i < 10; i++){
+
+        cout << "c " << c << endl;
+        struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, 1, 1);
+        cout << "# features " << model->nr_feature << endl;
+
+        // test
+        test_docs = readColumnFormatFiles(test_dir);
+//                clean_cap_words(test_docs);
+        predict_ner(test_docs, extractor, model);
+        free_and_destroy_model(&model);
+        bilou_to_bio(test_docs);
+        double f1 = evaluate_phrases(test_docs);
+
+        free_docs(test_docs);
+        c/=2;
+    }
+}
+
+void yo_exp(){
+
+
+    set_lorelei_types();
+
+    const char *train_dir = "/shared/corpora/ner/translate/camera-ready/yo/Train/";
+    const char *test_dir = "/shared/corpora/ner/translate/camera-ready/yo/Test/";
+
+
+
+    FeatureExtractor *extractor = new FeatureExtractor();
+//    extractor->use_form = false;
+//    extractor->use_affixe = false;
+    extractor->form_context_size = 2;
+    extractor->brown_context_size = 2;
+    extractor->gazetteer_context_size = 2;
+//    extractor->use_tagpattern = false;
+//    extractor->use_gazetteer = false;
+//    extractor->use_brown = false;
+    extractor->gazetteer_list = "/home/ctsai12/CLionProjects/NER/resources/gazetteers-list.txt";
+//    extractor->use_tagcontext = false;
+//    extractor->use_cap = false;
+//    extractor->use_wordtype = false;
+//    extractor->use_sen = false;
+    extractor->use_wikifier = true;
+    extractor->min_word_freq = 1;
+    extractor->prefix_len.push_back(20);
+    extractor->brown_cluster_paths.clear();
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/yodump-c1000-p1.out/paths");
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/yodump-c100-p1.out/paths");
+    extractor->brown_cluster_paths.push_back("/home/mayhew2/software/brown-cluster-master/yodump-c500-p1.out/paths");
+
+
+    vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
+
+//    clean_cap_words(train_docs);
+    bio_to_bilou(train_docs);
+//    bio_to_bilou(train_docs1);
+    struct problem *train_prob = build_svm_problem(train_docs, extractor);
+
+    extractor->training = false;
+
+    vector<Document *> *test_docs;
+
+    double c = 8; // no wiki: 0.5, +wiki: 0.015625
+
+    for(int i = 0; i < 10; i++){
+
+        cout << "c " << c << endl;
+        struct model *model = train_ner(train_prob, L2R_LR_DUAL, c, 0.1, 1, 1);
+        cout << "# features " << model->nr_feature << endl;
+
+        // test
+        test_docs = readColumnFormatFiles(test_dir);
+//                clean_cap_words(test_docs);
+        predict_ner(test_docs, extractor, model);
+        free_and_destroy_model(&model);
+        bilou_to_bio(test_docs);
+        double f1 = evaluate_phrases(test_docs);
+
+        free_docs(test_docs);
+        c/=2;
+    }
+}
+
+void ug_self_training(){
+
+#ifndef WEIGHT
+    cout << "Use weighted SVMs to get better performance!!!" << endl;
+    exit(-1);
+#endif
+
+//    set_conll_types();
+
+    set_lorelei_types();
+
+//    const char *train_dir = "/shared/corpora/ner/translate/ug/manual/";
+    const char *train_dir = "/shared/corpora/ner/wikifier-features/ug/cp4/transfer+manuall+rule.gpe/";
+    const char *test_dir = "/shared/corpora/ner/lorelei/ug/All-stem-best/";
+//    const char *test_dir = "/shared/corpora/ner/translate/ug/manual/";
+
+    FeatureExtractor *extractor = new FeatureExtractor();
+//    extractor->use_form = false;
+    extractor->form_context_size = 2;
+    extractor->brown_context_size = 2;
+    extractor->gazetteer_context_size = 2;
+    extractor->use_gazetteer = false;
+//    extractor->gazetteer_list = "/shared/experiments/ctsai12/workspace/illinois-ner/config/gazetteers-list-ug.txt_";
+    extractor->min_word_freq = 1;
+    extractor->prefix_len.push_back(20);
+    extractor->brown_cluster_paths.clear();
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c200-min3/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c500-min5/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/combine-c1000-min5/paths");
+
+
+    vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
+    vector<Document *> *test_docs;
+    double weight = 1;
+
+    double overallf1 = 0;
+    double begin_c = 0.25;
+    double end_c = 0.03125;
+
+    vector<string> history;
+    double self_c = 0.25;
+
+    while(true) {
+        cout << "weight " << weight << endl;
+        struct problem *train_prob = build_weighted_svm_problem(train_docs, extractor, weight);
+        struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, self_c, 0.1, 1, 1);
+        free(train_prob->x);
+        free(train_prob->y);
+#ifdef WEIGHT
+        free(train_prob->W);
+#endif
+
+        clear_features(train_docs);
+        predict_ner(train_docs, extractor, model);
+//        copy_pred_labels(train_docs);
+        int nm = merge_pred_labels1(train_docs);
+
+        clear_features(train_docs);
+
+        struct problem *prob = build_weighted_svm_problem(train_docs, extractor, 0.4);
+        double c = begin_c;
+        double maxf1 = 0, max_c;
+        while(c >= end_c){
+            cout << "c " << c << endl;
+            struct model *model_ = train_ner(prob, L2R_LR_DUAL, c, 0.1, 1, 1);
+            cout << "# features " << model_->nr_feature << endl;
+
+            test_docs = readColumnFormatFiles(test_dir);
+            predict_ner(test_docs, extractor, model_);
+            free_and_destroy_model(&model_);
+            double f1 = evaluate_phrases(test_docs);
+            if(f1 > maxf1) {
+                maxf1 = f1;
+                max_c = c;
+            }
+            free_docs(test_docs);
+            c/=2;
+        }
+        overallf1 = max(maxf1, overallf1);
+        cout << "max f1 " << maxf1 << endl;
+        cout << "overall max f1 " << overallf1 << endl;
+        clear_features(train_docs);
+        history.push_back(to_string(weight)+" "+to_string(nm)+" "+to_string(max_c)+" "+to_string(maxf1)+" "+to_string(overallf1));
+        for(string h: history)
+            cout << h << endl;
+        if(max_c == end_c) {
+            end_c /= 2;
+            begin_c /= 2;
+        }
+        if(max_c == begin_c) {
+            begin_c *= 2;
+            end_c *= 2;
+        }
+
+        if(nm <= 10){
+            weight /= 2;
+//        self_c *= 2;
+            if(weight <= 0.03125)
+                break;
+        }
+    }
+}
+
+void ug_self_training1(){
+
+#ifndef WEIGHT
+    cout << "Use weighted SVMs to get better performance!!!" << endl;
+    exit(-1);
+#endif
+
+//    set_conll_types();
+
+    set_lorelei_types();
+
+//    const char *train_dir = "/shared/corpora/ner/translate/ug/manual/";
+    const char *train_dir = "/shared/corpora/ner/wikifier-features/ug/cp4/transfer+manuall+rule.gpe/";
+    const char *test_dir = "/shared/corpora/ner/lorelei/ug/All-stem-best/";
+//    const char *test_dir = "/shared/corpora/ner/translate/ug/manual/";
+
+    FeatureExtractor *extractor = new FeatureExtractor();
+//    extractor->use_form = false;
+    extractor->form_context_size = 2;
+    extractor->brown_context_size = 2;
+    extractor->gazetteer_context_size = 2;
+    extractor->use_gazetteer = false;
+//    extractor->gazetteer_list = "/shared/experiments/ctsai12/workspace/illinois-ner/config/gazetteers-list-ug.txt_";
+    extractor->min_word_freq = 1;
+    extractor->prefix_len.push_back(20);
+    extractor->brown_cluster_paths.clear();
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c200-min3/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c500-min5/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/combine-c1000-min5/paths");
+
+
+    vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
+    vector<Document *> *test_docs;
+    double weight = 0.2;
+    double overallf1 = 0;
+    double begin_c = 4;
+    double end_c = 0.0625;
+
+    vector<string> history;
+    double self_c = 0.03125;
+
+    struct problem *train_prob = build_weighted_svm_problem(train_docs, extractor, weight);
+
+    for(int round = 0; round < 10; round++) {
+        cout << "========== round " << round << " ===========" << endl;
+        struct model *model = train_ner(train_prob, L2R_LR_DUAL, self_c, 0.1, 1, 1);
+        free(train_prob->x);
+        free(train_prob->y);
+#ifdef WEIGHT
+        free(train_prob->W);
+#endif
+        train_prob = build_semi_problem(train_docs, extractor, model);
+        free_and_destroy_model(&model);
+//        struct model *model1 = train_ner(semi_prob, L2R_LR_DUAL, self_c, 0.1, 1, 1);
+//        struct problem *semi_prob1 = build_semi_problem(train_docs, extractor, model1);
+        double mf1 = 0;
+        for(double c = begin_c; c >= end_c; c/=2) {
+            cout << "c " << c << endl;
+            struct model *model_ = train_ner(train_prob, L2R_LR_DUAL, c, 0.1, 1, 1);
+            test_docs = readColumnFormatFiles(test_dir);
+            predict_ner(test_docs, extractor, model_);
+            free_and_destroy_model(&model_);
+            double f1 = evaluate_phrases(test_docs);
+            mf1 = max(f1, mf1);
+            free_docs(test_docs);
+        }
+        cout << "max f1 " << mf1 << endl;
+    }
+
+//    while(true) {
+//        cout << "weight " << weight << endl;
+//        struct problem *train_prob = build_weighted_svm_problem(train_docs, extractor, weight);
+//        struct model *model = train_ner(train_prob, L2R_LR_DUAL, self_c, 0.1, 1, 1);
+//        free(train_prob->x);
+//        free(train_prob->y);
+//        free(train_prob->W);
+//
+//        clear_features(train_docs);
+//        predict_ner(train_docs, extractor, model);
+////        copy_pred_labels(train_docs);
+//        int nm = merge_pred_labels1(train_docs);
+//
+//        clear_features(train_docs);
+//
+//        struct problem *prob = build_weighted_svm_problem(train_docs, extractor, 0.4);
+//        double c = begin_c;
+//        double maxf1 = 0, max_c;
+//        while(c >= end_c){
+//            cout << "c " << c << endl;
+//            struct model *model_ = train_ner(prob, L2R_LR_DUAL, c, 0.1, 1, 1);
+//            cout << "# features " << model_->nr_feature << endl;
+//
+//            test_docs = readColumnFormatFiles(test_dir);
+//            predict_ner(test_docs, extractor, model_);
+//            free_and_destroy_model(&model_);
+//            double f1 = evaluate_phrases(test_docs);
+//            if(f1 > maxf1) {
+//                maxf1 = f1;
+//                max_c = c;
+//            }
+//            free_docs(test_docs);
+//            c/=2;
+//        }
+//        overallf1 = max(maxf1, overallf1);
+//        cout << "max f1 " << maxf1 << endl;
+//        cout << "overall max f1 " << overallf1 << endl;
+//        clear_features(train_docs);
+//        history.push_back(to_string(weight)+" "+to_string(nm)+" "+to_string(max_c)+" "+to_string(maxf1)+" "+to_string(overallf1));
+//        for(string h: history)
+//            cout << h << endl;
+//        if(max_c == end_c) {
+//            end_c /= 2;
+//            begin_c /= 2;
+//        }
+//        if(max_c == begin_c) {
+//            begin_c *= 2;
+//            end_c *= 2;
+//        }
+//
+//        if(nm <= 5){
+//            weight /= 2;
+////        self_c *= 2;
+//            if(weight < 0.03125)
+//                break;
+//        }
+//    }
+}
+
+void ug_exp(){
+
+#ifndef WEIGHT
+    cout << "Use weighted SVMs to get better performance!!!" << endl;
+    exit(-1);
+#endif
+
+//    set_conll_types();
+
+    set_lorelei_types();
+
+//    const char *train_dir = "/shared/corpora/ner/translate/ug/Train-translit-noxitay-anno1/";
+//    const char *train_dir = "/shared/corpora/ner/translate/ug/manual-all/";
+//    const char *train_dir = "/shared/corpora/ner/eval/column/final-mayhew2-stem-orig/";
+    const char *train_dir = "/shared/corpora/ner/wikifier-features/ug/cp4/transfer+manuall+rule.all/";
+//    const char *train_dir = "/shared/corpora/ner/lorelei/ug/All-stem-best/";
+    const char *test_dir = "/shared/corpora/ner/lorelei/ug/All-stem-best/";
+//    const char *test_dir = "/shared/corpora/ner/translate/ug/manual/";
+//    const char *test_dir = "/shared/corpora/ner/wikifier-features/ug/cp4/transfer+manuall+rule.gpe/";
+//    const char *test_dir = "/shared/corpora/ner/wikifier-features/ug/cp3/final/ensemble3-1-stem-orig.xitay/";
+
+    FeatureExtractor *extractor = new FeatureExtractor();
+//    extractor->use_form = false;
+    extractor->form_context_size = 2;
+    extractor->brown_context_size = 2;
+    extractor->gazetteer_context_size = 2;
+//    extractor->use_tagpattern = false;
+    extractor->use_gazetteer = false;
+//    extractor->use_brown = false;
+    extractor->gazetteer_list = "/shared/experiments/ctsai12/workspace/illinois-ner/config/gazetteers-list-ug.txt_";
+//    extractor->use_affixe = false;
+//    extractor->use_tagcontext = false;
+//    extractor->use_cap = false;
+//    extractor->use_sen = false;
+//    extractor->use_wikifier = true;
+    extractor->min_word_freq = 1;
+    extractor->prefix_len.push_back(20);
+    extractor->brown_cluster_paths.clear();
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c200-min3/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/set0-mono-c500-min5/paths");
+    extractor->brown_cluster_paths.push_back("/shared/experiments/ctsai12/workspace/brown-cluster/combine-c1000-min5/paths");
+
+
+    vector<Document *> *train_docs = readColumnFormatFiles(train_dir);
+//	vector<Document *> *docs1 = readColumnFormatFiles("/shared/corpora/ner/translate/ug/Train-translit-2/");
+//    for(int i = 0; i < docs1->size(); i++)
+//        train_docs->push_back(docs1->at(i));
+//    vector<Document *> *docs2 = readColumnFormatFiles("/shared/corpora/ner/translate/ug/Train-translit-3/");
+//    for(int i = 0; i < docs2->size(); i++)
+//        train_docs->push_back(docs2->at(i));
+//    vector<Document *> *docs3 = readColumnFormatFiles("/shared/corpora/ner/translate/ug/Train-translit-4/");
+//    for(int i = 0; i < docs3->size(); i++)
+//        train_docs->push_back(docs3->at(i));
+    struct problem *train_prob = build_svm_problem(train_docs, extractor);
+//    struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, 0.015625, 0.1, 1, 1);
+//    struct problem *prob = build_selftrain_problem(train_docs, train_docs, extractor, model);
+//    writeColumnFormatFiles(train_docs, "/shared/corpora/ner/wikifier-features/ug/cp3/final/ensemble3-1-stem-orig.xitay-self-1");
+
+    extractor->training = false;
+
+    vector<Document *> *test_docs;
+//    ofstream paramfile("ug");
+
+    double c = 0.25;
+
+    for(int i = 0; i < 8; i++){
+
+        cout << "c " << c << endl;
+//        paramfile << "c " << c << endl;
+        struct model *model = train_ner(train_prob, L2R_L2LOSS_SVC, c, 0.1, 1, 1);
+        cout << "# features " << model->nr_feature << endl;
+
+        // test
+        test_docs = readColumnFormatFiles(test_dir);
+//                clean_cap_words(test_docs);
+        predict_ner(test_docs, extractor, model);
+        free_and_destroy_model(&model);
+//                bilou_to_bio(test_docs);
+        double f1 = evaluate_phrases(test_docs);
+//        writeColumnFormatFiles(test_docs, "/shared/corpora/ner/wikifier-features/ug/cp4/transfer+manuall+rule.gpe-self-svm");
+//        writeColumnFormatFiles(test_docs, "/shared/corpora/ner/translate/ug/manual-self-w0.2-c0.125/");
+//        paramfile << "1" << " " << f1 << endl;
+        free_docs(test_docs);
+        c/=2;
+    }
+//    paramfile.close();
 }
 
 int main() {
@@ -626,9 +1061,16 @@ int main() {
 //    nominal_exp();
 //    pronominal_exp();
 
-//    am_exp();
+    am_exp();
+//    ug_exp();
+//    ug_self_training();
+//    ug_self_training1();
 
-    run_sota();
+//    bn_exp();
+
+//    yo_exp();
+
+//    run_sota();
 
     return 0;
 }

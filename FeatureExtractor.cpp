@@ -237,8 +237,13 @@ void FeatureExtractor::affixes(Document *doc, int sen_id, int tok_id) {
             add_feature(target, "Prefix:" + prefix, 1);
         }
     }
-//    add_feature(target, "Ignorefirst:" + surface.substr(1, n-1), 1);
-//    add_feature(target, "Ignorelast:" + surface.substr(0, n-1), 1);
+
+    for(int j = 1; j < 5; j++) {
+        if(surface.size() >= n-j) {
+            add_feature(target, "IgnoreFirst" + to_string(j) + ":" + surface.substr(1, n - j), 1);
+            add_feature(target, "Ignorelast" + to_string(j) + ":" + surface.substr(0, n - j), 1);
+        }
+    }
 
     for(int j = 1; j < 5; j++){
         if(n >= j){
@@ -385,6 +390,7 @@ void FeatureExtractor::init_brown_clusters() {
             }
         }
         brown_clusters->push_back(bc);
+        cout << "  " << bc->size() << endl;
 //        cout << brown_cluster_paths.at(i) << endl;
 //        cout << "#words " << brown_clusters.back().size() << endl;
     }

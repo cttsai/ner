@@ -64,6 +64,7 @@ public:
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-english-wikitext.case-intact.txt-c1000-freq10-v3.txt",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brownBllipClusters",
             "/shared/corpora/ratinov2/NER/Data/BrownHierarchicalWordClusters/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt",
+            "/shared/experiments/ctsai12/workspace/brown-cluster/en.wiki.c1000.min5/paths"
 //            "/shared/experiments/ctsai12/workspace/brown-cluster/conll.c500/paths"
     };
     int min_word_freq = 2;
